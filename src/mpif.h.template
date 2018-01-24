@@ -1,0 +1,30 @@
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!-----------   This is a dummy header file for non-MPI use
+!              This header file is required to make MPI calls
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      integer(4),parameter :: MPI_INTEGER=4
+      integer(4),parameter :: MPI_INTEGER4=4
+      integer(4),parameter :: MPI_INTEGER8=8
+      integer(4),parameter :: MPI_REAL=4
+      integer(4),parameter :: MPI_REAL4=4
+      integer(4),parameter :: MPI_REAL8=8
+      integer(4),parameter :: MPI_DOUBLE_PRECISION=8
+      integer(4),parameter :: MPI_CHARACTER=4
+      integer(4),parameter :: MPI_LOGICAL=4
+      integer(4),parameter :: mpi_COMM_world=0
+      integer(4),parameter :: MPI_SUM=4
+      integer(4),parameter :: MPI_MODE_CREATE=0
+      integer(4),parameter :: MPI_MODE_RDWR=0
+      integer(4),parameter :: MPI_INFO_NULL=0
+      integer(4),parameter :: MPI_STATUS_SIZE=1
+      integer(4),parameter :: MPI_OFFSET_KIND=8
+!      integer(4),parameter :: MPI_OFFSET_KIND=selected_int_kind(8)
+      integer(4),parameter :: MPI_MODE_DELETE_ON_CLOSE = 0
+      integer(4),parameter :: MPI_UNDEFINED = 1
+      double precision     :: MPI_Wtime
+	  integer(4) :: MPI_IN_PLACE(2)
+	  integer, parameter :: MPI_OFFSET=67
+	  integer, parameter :: MPI_MODE_RDONLY=2
+	  integer, parameter :: MPI_MODE_WRONLY=4
+	  integer, parameter :: MPI_SEEK_SET=600
+	  integer, parameter :: MPI_MAX_PROCESSOR_NAME = 128

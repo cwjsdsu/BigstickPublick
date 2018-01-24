@@ -1,0 +1,7 @@
+x      ! menu choice 
+mg25ref                                                
+none                                                   
+n
+usdb                                                       ! name of interaction file 
+    1.0000    18.0000    25.0000    .30000        ! scaling: xspe, A0,A,x 
+end       ! end of interaction files 
