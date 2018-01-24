@@ -1,0 +1,148 @@
+WHAT'S NEW IN BIGSTICK IN VERSION...
+7.8.1 (Aug-Nov 2017)
+* Deleted restart option from menu.
+* Commented out code to open .lvec files
+* Added capability to read NuShell .sp files
+* Added capability to use autoscaling from NuShell .int file
+* Improved timing estimate.
+* Fixed more bugs which arose in subsuming SPE.
+* Fixed bug of reading in xpn files with truncations
+
+7.8.0 (Aug 2017)
+* Subsumed SPE operations into PP, NN, PN via (N-1)/(A-1); new file bsppot.f90
+* Minor reordering of some calls etc to make sure new subsumation of SPE works correctly.
+* Fixed bugs which arose in subsuming SPE. Tested MPI, OpenMP, and MPI-OpenMP
+
+7.7.9 (July-Aug 2017)
+* Made some changes, improvements in recording timing and other data
+* Added description to INSIDE GUIDE on timing, output files.
+* Changed position of output of bundletimes to avoid error message after density matrices.
+* Added new output file 'timingdata.bigstick' which combines and subsumes most other 
+  timing output files (bundletimes.bigstick, etc.)
+* Added new output file 'distrodata.bigstick' which combines and subsumes several other
+  distribution output files (opsdistro.bigstick etc.)
+
+7.7.8 (May-July 2017)
+* Modified the self-consistent mean-field option so it can write multiple vectors to file
+* Added in 'tx' option for thick-restart to (approximately) target highly excited states;
+for thick-restart added new convergence criteria, the rms of the beta's. This new option
+works in MPI.
+
+7.7.7 (Apr-May 2017 )
+* Added option 'np' so can read in a predetermined pivot (such as from option 'f') with regular Lanczos
+* In binput_tbme.f90, rewrote open_tbme_file -> tbme_menu for a (slightly) less kludgy routine
+* Added routine to read in interactions in explicit proton-neutron format, with proton and neutron 
+  spaces being the same
+  New options are 'xpn' and 'upn' for explicit proton-neutron and unnormalized explicit proton-neutron
+
+7.7.6 (Apr 2017  )
+* Some comments added to breorthog.f90
+* Put some common variables for lanczos into module lanczos_util in order to make transferring data easier
+* Moving to clean up Lanczos algorithm making some defaults permanent
+* SCMF option now working, still needs cleaning up.
+
+7.7.5 (Dec 2016-March 2017)
+* Fixed some timing for 'backwards' pp, pn, for better diagnoses
+* Added capability to write out density matrices in p-n format
+  even when running with good isospin
+* Also can read in one-body operators to apply (option 'o') in p-n format
+
+7.7.4 (Sept-Dec 2016)
+* Shan fixed some minor bugs
+* Installed option to read pivot vector for ordinary runs in preparation for HF
+* Added file bscmf.f90 for routines for Hartree-Fock/selfconsistent mean field option
+  (needs debugging however)
+* Fixed timing for reorthogonalization
+* introduced universal variables (bytesperXXjump etc) which record memory storage
+
+7.7.3 (Aug 2016)
+* Merged Hongzhang Shan's OpenMP threading for better efficiency; can be turned off by setting
+   useHZSomp = .false.
+* (Moved towards reinstalling Hartree-Fock reconditioner; still in progress)
+
+7.7.2 (Aug 2016)
+* Added new option 'b' to write basis info to a file for postprocessing
+* Investigated # of haikus actually "used" in creating basis states
+* Fixed exactdiag_p so that it works with density matrices.
+
+7.7.1 (Aug 2016)
+* Option 'dx' (density matrices from previously computed wavefunctions) now works in MPI, w/fragments
+* Option 'v' (overlap/dot product) now works in MPI w/fragments
+
+7.7.0 (July/Aug 2016)
+* Fixed inline density matrices to work again  
+* Minor rewrite to overlap routines to work with fragments (MUST TEST)
+* Inline density matrices now work with MPI + fragments (but test more)
+* More reorganization (mostly of parallel distribution routines).
+  -- completely removed interfaces (including legacy file binterfaces.inc)
+
+7.6.9: (July 2016)
+* Reorganized basis files into specific tasks; in fact this had already been the case
+but I put them in with a corresponding module
+
+7.6.8: (July 2016)
+* Introduced option 'ne' where only energies, no J, no T calculated or printed out
+* Wrote/edited routines to finish distributing work for option 'o' apply 1-body operator
+* Successfully (mostly) implemented targeted thick-restart so one can get highly excited states
+  option 'tx' in Lanczos menu;  still need more testing
+* Fixed overlap option 'v' which had been devalued under revision
+* Option "o" (apply 1-body) should now work in MPI, including with fragments
+
+7.6.7: (June 2016)
+* delete module tribution in bmodules_parallel.f90, moved data to modules 
+   fragments and operation_stats
+* Fixed bug in density matrices (in reading in second wavefunction)
+* Reorganized bdenslib and bapplyobslib2 files so as to gather similar routines
+* Introduced new routines to apply one-body operators (now in bdenslib3.f90)
+  These routines yield the same vectors up to 10-8, keep in mind however that
+  Lanczos strength functions can yield intermediate results that appear different
+  but with convergence these agree
+
+7.6.6: (June 2016)
+* Fixed bugs in improved OpenMP threading
+* Edited MFD input routine in binput_tbme.f90 to be more robust
+* Small edits to input/output (e.g., force 'lf' to be ONLY lanczos option for 
+               strength function runs)
+*Reorganized bwfnlib.f90 to group together like routines;
+             renamed writeeigenvec_p -> wfn_writeeigenvec to be more consistent
+*Rewrote routine "readpivot" so works (again) in MPI, including with fragments
+*This means options 'x' (expectation values) and 's' (strength functions) work
+  in MPI with fragments.
+
+
+7.6.5: (May 2016) Ken improved OpenMP threading
+*       Fixed various bugs in MPI on LLNL/Vulcan
+* Dummy fragment size written to auto input files
+
+
+7.6.3 (March 2016): Marching towards better initial pivot, preconditioner(s) for LOBPCG:
+* improved documentation especially on main lanczos routine (which subroutines are called)
+* added flags to module lanczos_info to limit application of opbundles
+* added routines to compute/apply average pn diagonal within a sector  
+* removed routine lanczos_master which was only called in the restart option
+* modified main lanczos routine (lanczos_p) so that pivots are created outside it
+* generated two options for initialzing pivot: see routine dynamic_vector_initializer
+
+7.6.2 (February 2016):
+
+7.6.1 (January 2016) :
+* added a flag (iffulluseph) in module flagger to signal that, if a particle 
+space is filled, to use p-h conjugation
+* fixed a bug in p-h conjugation (did not correctly compute isospin if only 1 hole)
+* added a flag to allow for automatic p-h conjugation when a particle space is filled; found
+and fixed an associated bug (did not read in pn interactions and thus did not correctly compute 
+effective s.p. energies)
+* further fixed occupations with p-h conjugation so that filled shells show up as filled
+* Added the ability to have separate W truncations on protons and neutrons as well as the sum
+
+7.6.0 (December 2015): *  Fixed some minor bugs with particle-hole conjugation (specifically, with 
+truncation, computation of isospin and density matrices could have errors. These had to do with 
+BIGSTICK's automatic truncation of single particle spaces in some cases. Because we only use p-h
+truncation in relatively small s.p. spaces, these were turned off).
+* Also fixed particle occupation so it works correctly with particle-hole conjugation + truncations.
+* Added a logfile, xxx.log, which records information such as standard flags, headers from input 
+files, and so on. 
+* Added bloglib.f90
+* Deleted file bparallellib5.f90 with only obsolete files
+* Deleted file bpreconditioner.f90 
+* Added dlamc3.f to improve optimization cf KSM notes
