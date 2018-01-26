@@ -1,0 +1,11 @@
+d      ! menu choice 
+mg25alt                                                
+sd    !  name of .sps file 
+           4           5  ! # of valence protons, neutrons 
+           1        ! 2 x Jz of systems 
+n
+usdb                                                       ! name of interaction file 
+    .0000 1.  1.  1.000        ! scaling: xspe, A0,A,x 
+end       ! end of interaction files 
+ld    ! Lanczos menu option 
+          10         400      ! # states to keep, max # iterations 

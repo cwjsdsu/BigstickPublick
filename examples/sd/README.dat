@@ -1,0 +1,24 @@
+Sample files for testing BIGSTICK and its modalities
+
+a normal run + density matrices 
+
+bigstick.x < input.mg25ref
+
+a normal run + density matrices but with 2-body implemented as 3-body
+
+bigstick.x < input.mg25ref3b
+
+compute density matrices from the previous run
+
+bigstick.x < input.mg25denfromwfn
+
+compute an expectation value (of the original Hamiltonian) from a reference wfn
+
+bigstick.x < input.mg25expectH
+
+compute an alternate wavefunction and take the overlap
+
+bigstick.x < input.mg25alt
+bigstick.x < input.mg25overlap
+
+
