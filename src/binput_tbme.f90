@@ -76,9 +76,11 @@ subroutine master_readin_tbmes
 ! MKGK variables
   integer :: k, indmin, indmax, jminx,jmaxx,j
   integer :: aerr
+  logical :: firstread
 
 !---------------------------------------
 
+  firstread = .true.
   allocate( pspe(numorb(1)), nspe(numorb(2)) , stat=aerr)
   if(aerr /= 0) call memerror("master_readin_tbmes 1")
   pspe(1:numorb(1)) = 0.0
@@ -108,7 +110,7 @@ subroutine master_readin_tbmes
 	 write(logfile,*)' Interactions read in: '
    finished = .false.  
    do while(.not.finished) 
-        call tbme_menu(finished,intfiletype,formattedfile)   ! NEW ROUTINE ADDED 7.7.7
+        call tbme_menu(firstread,finished,intfiletype,formattedfile)   ! NEW ROUTINE ADDED 7.7.7
         if ( finished ) then 
            exit 
         end if 
@@ -117,13 +119,18 @@ subroutine master_readin_tbmes
         select case (intfiletype) 
         case (0) 
  
-           call readv2bme_oxbash_iso   ! new and improved 
+           call readv2bme_oxbash_iso(firstread)   ! new and improved 
         case (1,2,3) 
-           call readv2bme_mfd(formattedfile,intfiletype) 
+           call readv2bme_mfd(firstread,formattedfile,intfiletype) 
 		   
 		   case (4,5)
-		   call readv2bme_xpn(formattedfile,intfiletype) 
+		   call readv2bme_xpn(firstread,formattedfile,intfiletype) 
         end select 
+        if(.not.firstread)then
+		   print*,' '
+		   print*,' Interaction file successfully read '
+		   print*,' '
+    	end if
  
      end do ! while .not. finished 
   end if 
@@ -155,7 +162,7 @@ end subroutine master_readin_tbmes
 !     formattedfile: if formatted or unformatted
 !
 !
-subroutine tbme_menu(finished,intfiletype,formattedfile) 
+subroutine tbme_menu(firstread,finished,intfiletype,formattedfile) 
     use io 
     use sporbit 
     use coupledmatrixelements 
@@ -164,6 +171,7 @@ subroutine tbme_menu(finished,intfiletype,formattedfile)
     use reporter
     implicit none 
  
+    logical      :: firstread
     logical      :: finished 
     logical      :: formattedfile 
     integer      :: intfiletype 
@@ -185,6 +193,7 @@ do while(.not.success)
     if(auto_input)then 
        read(autoinputfile,'(a)')tmpfilename 
     else 
+		if(.not.firstread)print*,' Would you like to read in another interaction file? '
 		select case (formatchar)
 	
 	     case ('mfd')
@@ -194,11 +203,14 @@ do while(.not.success)
              print*,' Enter name of two-body interaction file in explicit proton-neutron format ' 
 	
 		 case('def','iso')
-              print*,' Enter two-body interaction file name ' 
-              print*,' (Enter "end" to stop; "opt" for file format options; "?" for  general info ) ' 
+              print*,' Enter two-body interaction file name OR file format code (e.g., XPN) ' 
+              print*,' (Enter "end" to finish; "opt" for file format options; "?" for  general info ) ' 
 	     
 		 case default
 		    print*,' variable formatchar not properly set ',formatchar
+			print*,' STOPPING RUN '
+		    call BMPI_Abort(icomm,101,ierr)
+			
 		    stop
 		
 	    end select
@@ -324,6 +336,8 @@ do while(.not.success)
 			  
 			  case default 
 			  print*, ' should not have gotten to this point, bad file format choice ',formatchar
+  			  print*,' STOPPING RUN '
+  		      call BMPI_Abort(icomm,101,ierr)
 			  stop
 			  
   	     end select
@@ -410,6 +424,8 @@ do while(.not.success)
 		  	case ('mfd')
 	
 		  	print*,' Expecting an MFD format file, should not have gotten here '
+			print*,' STOPPING RUN '
+		    call BMPI_Abort(icomm,101,ierr)
 		  	stop
 	
 		  	case default
@@ -852,7 +868,7 @@ subroutine open_tbme_file(finished,intfiletype,formattedfile)
   return 
 end subroutine open_tbme_file 
 !============================================================ 
-subroutine readv2bme_oxbash_iso 
+subroutine readv2bme_oxbash_iso(firstread)
 ! 
 !   READS IN single-particle energies, TBMEs 
 !   CAN READ IN MULTIPLE FILES 
@@ -875,6 +891,7 @@ subroutine readv2bme_oxbash_iso
   use butil_mod
   
   implicit none 
+  logical firstread
  
   integer(4) :: ierr 
   integer :: aerr 
@@ -883,6 +900,7 @@ subroutine readv2bme_oxbash_iso
   character*1 ychar 
    
   character*70 title 
+  character*3 :: formattest
   integer ia,ib,ic,id 
   integer a,b,c,d 
   integer na,nb,nc,nd 
@@ -910,7 +928,7 @@ subroutine readv2bme_oxbash_iso
   integer L 
   logical success 
   logical smint   !  a successor to .int  
-  logical finished  
+  logical finished ,foundit ,formattedfile
   logical autoscale  ! added 7.8.1 for reading in NuShell files
   integer :: numval
   
@@ -936,6 +954,21 @@ subroutine readv2bme_oxbash_iso
         read(1,'(a)')title 
         write(6,*)title 
 		write(logfile,*)title
+		call fileformatcheck(title,foundit,formattest)
+		if(foundit)then ! check format
+		   if(( formattest /='def' .and. formattest/='iso')  )then
+			   print*,' '
+			   print*,'  WARNING !   '
+			  print*,' File appears to be in wrong format '
+			  print*,' Header denotes format as ',formattest
+		      print*,'  SKIPPING FILE !   '
+  		      print*,' '
+			  write(logfile,*)' File appears to be in wrong format '
+			  write(logfile,*)' Header denotes format as ',formattest
+		      write(logfile,*)'  SKIPPING FILE !   '
+			  return
+		  end if
+	    end if
      end if 
   end do 
 !--------------- IF THIS IS A .SMINT FILE, COMPARE S.P. STATES  
@@ -955,7 +988,9 @@ subroutine readv2bme_oxbash_iso
 if(.not.autoscale)then
   if(auto_input)then 
      if(coul_int)then 
-        print*,' Not set up for auto-input with coulomb ' 
+        print*,' Not set up for auto-input with coulomb '
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr) 
         stop 
      end if 
      read(autoinputfile,*)spscale,ax,bx,x 
@@ -1099,6 +1134,8 @@ end if
             print*,ia,ib,ic,id,j,t,vv 
             print*,' Check that single particle space matches hamiltonian ' 
             print*,' # of single-particle orbits = ',numorb(1) 
+			print*,' STOPPING RUN '
+		    call BMPI_Abort(icomm,101,ierr)
             stop 
          end if 
      else 
@@ -1111,6 +1148,8 @@ end if
             print*,ia,ib,ic,id,j,t_ab,t_cd,vv 
             print*,' Check that single particle space matches hamiltonian ' 
             print*,' # of single-particle orbits = ',numorb(1) 
+			print*,' STOPPING RUN '
+		    call BMPI_Abort(icomm,101,ierr)
             stop 
         end if 
      end if 
@@ -1157,6 +1196,8 @@ end if
 	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
 	 		     orbqn(it,a)%j,orbqn(it,a)%l,  orbqn(it,b)%j,orbqn(it,b)%l,  orbqn(it,c)%j,orbqn(it,c)%l,  orbqn(it,d)%j,orbqn(it,d)%l	
 		close(logfile)		 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1198,6 +1239,8 @@ end if
      ipar = XXcouples(it)%pairc(pair1)%par 
      if(ipar /= XXcouples(it)%pairc(pair2)%par)then 
         print*,' problem with parity, boss  (PP) ',a,b,c,d 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = XXcouples(it)%meref(ipar) 
@@ -1235,6 +1278,8 @@ end if
 !        print*,PPcouplemap(a*(a-1)/2 + b),PPcouplemap( c*(c-1)/2 + d) 
 !        print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
  		close(logfile)		
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
          
         stop 
      endif 
@@ -1273,7 +1318,9 @@ end if
  	    write(logfile,'(" a b c d = ",4i4," J T = ",2i4," V_JT(ab,cd) = ",f10.5)')a,b,c,d,j,t,vv 
  	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
  	 		     orbqn(it,a)%j,orbqn(it,a)%l,  orbqn(it,b)%j,orbqn(it,b)%l,  orbqn(it,c)%j,orbqn(it,c)%l,  orbqn(it,d)%j,orbqn(it,d)%l	
- 		close(logfile)		
+ 		close(logfile)
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1313,6 +1360,8 @@ end if
      if(ipar /= XXcouples(it)%pairc(pair2)%par)then 
         print*,' problem with parity, boss (NN oxb) ',a,b,c,d
 	print*,ia,ib,ic,id,i
+	print*,' STOPPING RUN '
+    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = XXcouples(it)%meref(ipar) 
@@ -1346,6 +1395,8 @@ end if
 !        print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
 !        print*,nnme(indx)%jmax,nnme(indx)%jmin 
         close(logfile)
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      nnme(indx)%v(j)=nnme(indx)%v(j)+vv*vscale*phase*factor_v 
@@ -1432,6 +1483,8 @@ end if
  	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
            orbqn(1,a)%j,orbqn(1,a)%l,  orbqn(2,b)%j,orbqn(2,b)%l,  orbqn(1,c)%j,orbqn(1,c)%l,  orbqn(2,d)%j,orbqn(2,d)%l
  		close(logfile)		
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1447,7 +1500,9 @@ end if
  
      ipar = PNcouples%pairc(pair1)%par 
      if(ipar /= PNcouples%pairc(pair2)%par)then 
-        print*,' problem with parity, boss (pn 1)  ' 
+        print*,' problem with parity, boss (pn 1)  '
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      if(pair1 < pair2)then 
@@ -1485,7 +1540,8 @@ end if
 !        print*,j,pnme(indx)%jmin,pnme(indx)%jmax 
 !        print*,PNcouples%pairc(pair1)%ia,PNcouples%pairc(pair1)%ib 
 !        print*,PNcouples%pairc(pair2)%ia,PNcouples%pairc(pair2)%ib 
- 
+         print*,' STOPPING RUN '
+        call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1539,6 +1595,8 @@ end if
   	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
             orbqn(1,a)%j,orbqn(1,a)%l,  orbqn(2,b)%j,orbqn(2,b)%l,  orbqn(1,c)%j,orbqn(1,c)%l,  orbqn(2,d)%j,orbqn(2,d)%l
   		close(logfile)		
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1559,6 +1617,8 @@ end if
      ipar = PNcouples%pairc(pair1)%par 
      if(ipar /= PNcouples%pairc(pair2)%par)then 
         print*,' problem with parity, boss (pn 2) ' 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      if(pair1 < pair2)then 
@@ -1592,7 +1652,8 @@ end if
 !        print*, a, b, c, d 
 !        print*,orbqn(2,a)%j,orbqn(1,b)%j,orbqn(1,c)%j,orbqn(2,d)%j 
 !        print*,pnme(indx)%jmax,pnme(indx)%jmin 
-             
+        print*,' STOPPING RUN '
+        call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      pnme(indx)%v(j)=pnme(indx)%v(j)+vv*vscale*phase*factor*factor_v 
@@ -1634,6 +1695,8 @@ end if
   	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
             orbqn(1,a)%j,orbqn(1,a)%l,  orbqn(2,b)%j,orbqn(2,b)%l,  orbqn(1,c)%j,orbqn(1,c)%l,  orbqn(2,d)%j,orbqn(2,d)%l
   		close(logfile)	
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1658,6 +1721,8 @@ end if
      ipar = PNcouples%pairc(pair1)%par 
      if(ipar /= PNcouples%pairc(pair2)%par)then 
         print*,' problem with parity, boss (pn 3) ' 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = PNcouples%meref(ipar) 
@@ -1686,6 +1751,8 @@ end if
 !        print*,' error in Js (pn 3) ',pair1,pair2,indx 
 !        print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
 !        print*,j,pnme(indx)%jmin,pnme(indx)%jmax 
+        print*,' STOPPING RUN '
+        call BMPI_Abort(icomm,101,ierr)
              
         stop 
      endif 
@@ -1728,6 +1795,8 @@ end if
   	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
             orbqn(1,a)%j,orbqn(1,a)%l,  orbqn(2,b)%j,orbqn(2,b)%l,  orbqn(1,c)%j,orbqn(1,c)%l,  orbqn(2,d)%j,orbqn(2,d)%l
   		close(logfile)		
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -1743,6 +1812,8 @@ end if
      ipar = PNcouples%pairc(pair1)%par 
      if(ipar /= PNcouples%pairc(pair2)%par)then 
         print*,' problem with parity, boss (pn 4) ' 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = PNcouples%meref(ipar) 
@@ -1772,10 +1843,9 @@ end if
  		 write(logfile,*)' Additional information ' 
          write(logfile,*)' J = ',j,' but min/max for these pairs are ',pnme(indx)%jmin,pnme(indx)%jmax 		
 		 close(logfile) 
-!        print*,' error in Js (pn 4) ',pair1,pair2,indx 
-!        print*,a,b,c,d 
-!        print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
-!        print*,j,pnme(indx)%jmin,pnme(indx)%jmax             
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
+           
         stop 
      endif 
      pnme(indx)%v(j)=pnme(indx)%v(j)+vv*vscale*phase*factor*factor_v 
@@ -1784,7 +1854,6 @@ end if
  
   enddo  !nme 
   if(allocated(ratio))deallocate(ratio) 
-  close(1)
 !........... WARNING MESSAGES.... 
   if(maxsp < maxorblabel)then
      if(iproc==0)then
@@ -1818,6 +1887,21 @@ end if
       write(logfile,*)' END WARNING '
       end if
   end if
+  firstread= .false.
+!......... ADDED IN 7.8.2.... GO ON TO LOOK FOR OFF-DIAGONAL SINGLE-PARTICLE  
+  formattedfile = .true.
+  call readinsppot('iso',1,spscale,spscale,formattedfile,foundit)
+  if(foundit)then
+	  print*,' Finished reading in off-diagonal one-body potential '
+	  write(logfile,*)' Finished reading in off-diagonal one-body potential '
+  else
+	  print*,' No one-body potential beyond single-particle energies '
+	  write(logfile,*)' No one-body potential beyond single-particle energies '
+
+  end if
+  close(1)
+  
+  
   return
 
 1899 continue
@@ -1848,7 +1932,7 @@ end subroutine readv2bme_oxbash_iso
 !              pair2 = ic*(ic-1)/2 + id 
 ! 
 !===================================================================== 
-subroutine readv2bme_mfd(formattedfile,intcase) 
+subroutine readv2bme_mfd(firstread,formattedfile,intcase) 
    
   use io 
   use system_parameters 
@@ -1858,8 +1942,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
   use nodeinfo 
   use bmpi_mod 
   implicit none 
- 
-  logical :: formattedfile 
+  
+  logical :: firstread,formattedfile 
   integer :: intcase 
    
   integer :: a,b,c,d 
@@ -1877,6 +1961,7 @@ subroutine readv2bme_mfd(formattedfile,intcase)
   integer :: pcpar, pcref,pcstart 
   integer :: dw 
   integer :: it 
+  integer :: ierr
    
   real :: Trel, Hrel,Hcm, Vcoul, Vpn, Vpp, Vnn, Vx 
   integer  :: maxsp   ! largest s.p. index, used for cross-checking
@@ -1890,12 +1975,15 @@ subroutine readv2bme_mfd(formattedfile,intcase)
   integer :: L 
  
   character :: bang 
+  character(40) :: title
   character :: breakchar 
-  logical :: finished 
+  logical :: finished ,foundit
+  character(3) :: formattest
  
   real :: betacm,cm1,hcmspe 
   real :: hw_in_file      ! parameter found in file 
   integer ::  Nprinc_in_file,N2_in_file       ! parameters found in file 
+  integer :: Nprinc_def   ! original definition
   integer ::  maxorbit
  
 !------------- READ PAST HEADER--------------------------------------- 
@@ -1904,10 +1992,29 @@ subroutine readv2bme_mfd(formattedfile,intcase)
      finished = .false. 
      do while(.not.finished) 
         read(1,'(a)')bang 
-        if(bang/='!')then 
+        if(bang/='!' .and. bang/='#')then 
            backspace(1) 
            finished = .true. 
         endif 
+		if(.not.finished)then
+			read(1,'(a)')title
+			call fileformatcheck(title,foundit,formattest)
+			if(foundit)then ! check format
+		   	 	if(formattest /= 'mfd')then
+	 			   print*,' '
+	 			   print*,'  WARNING !   '
+	 			  print*,' File appears to be in wrong format '
+	 			  print*,' Header denotes format as ',formattest
+	 		      print*,'  SKIPPING FILE !   '
+	   		      print*,' '
+				  write(logfile,*)' File appears to be in wrong format '
+				  write(logfile,*)' Header denotes format as ',formattest
+			      write(logfile,*)'  SKIPPING FILE !   '
+	 			  return
+			  	  return
+		  		end if
+	    	end if
+		end if
      enddo 
   endif 
     
@@ -1946,6 +2053,28 @@ subroutine readv2bme_mfd(formattedfile,intcase)
 	   Nprinc_in_file = max(Nprinc_in_file,nd)
 	   
      end do
+	 
+!........ NOW FIND MAX NPRINC IN ORIGINAL DEFINTION OF ORBITS....
+     Nprinc_def = 0
+     do i = 1,numorb(2)
+		 Nprinc_def = max(Nprinc_def,orbqn(2,i)%l+2*orbqn(2,i)%nr)		 
+	 end do
+	 
+	 if(Nprinc_def < Nprinc_in_file)then
+		 print*,' '
+		 print*,' Attention! You defined your single particle space '
+		 print*,' to have a max principle quantum number N = ',Nprinc_def
+		 print*,' BUT the file has a max N of ',Nprinc_in_file
+		 print*,' This could lead to errors in interpreting the file '
+		 print*,' You can solve this by increasing the defined max principle quantum number '
+		 print*,' '
+		 write(logfile,*)' Attention! S.P. space defined by max principal N = ',Nprinc_def
+		 write(logfile,*)' But interaction file has max N of ',Nprinc_in_file
+		 write(logfile,*)' This could lead to errors in interpreting the file '
+		 write(logfile,*)' You can solve this by increasing the defined max principle quantum number '
+		 
+	 end if
+	 
 	 rewind(1)
 	 read(1,*)nme
 
@@ -2060,6 +2189,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,' should not be here ',intcase 
         stop 
      end select 
+	 
+	 if(a > maxorblabel .or. b > maxorblabel .or. c > maxorblabel .or. d >maxorblabel)cycle ! this can avoid bad definitions
 
      maxsp = MAX(maxsp,a)
      maxsp = MAX(maxsp,b)
@@ -2095,6 +2226,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
         print*,a,b,c,d,j,t,vpp 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2147,6 +2280,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,ia,ib,ic,id,J,T,vpp 
         print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
         print*,j,ppme(indx)%jmin,ppme(indx)%jmax 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
              
         stop 
      endif 
@@ -2167,7 +2302,9 @@ subroutine readv2bme_mfd(formattedfile,intcase)
  
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
-        print*,a,b,c,d,j,t,vv 
+        print*,a,b,c,d,j,t,vv
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
       
@@ -2219,6 +2356,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,ia,ib,ic,id,J,T,vv 
         print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
         print*,nnme(indx)%jmax,nnme(indx)%jmin 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
          
         stop 
      endif 
@@ -2253,6 +2392,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
         print*,a,b,c,d,j,t,vv 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2280,7 +2421,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,ia,ib,ic,id,J,T,vv 
         print*,orbqn(1,ia)%j,orbqn(2,ib)%j,orbqn(1,ic)%j,orbqn(2,id)%j 
         print*,j,pnme(indx)%jmin,pnme(indx)%jmax 
-         
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif      
      pnme(indx)%v(j)=pnme(indx)%v(j)+vpn*phase*factor 
@@ -2312,6 +2454,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
         print*,a,b,c,d,j,t,vv 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2340,6 +2484,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,ia,ib,ic,id,J,T,vv 
         print*,orbqn(2,a)%j,orbqn(1,b)%j,orbqn(1,c)%j,orbqn(2,d)%j 
         print*,pnme(indx)%jmax,pnme(indx)%jmin 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
              
         stop 
      endif 
@@ -2373,6 +2519,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
         print*,a,b,c,d,j,t,vv 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
       
@@ -2400,7 +2548,8 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,ia,ib,ic,id,J,T,vv 
         print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
         print*,j,pnme(indx)%jmin,pnme(indx)%jmax 
-         
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      pnme(indx)%v(j)=pnme(indx)%v(j)+vpn*phase*factor 
@@ -2431,7 +2580,9 @@ subroutine readv2bme_mfd(formattedfile,intcase)
  
      if( (-1)**(L) ==-1)then 
         print*,' error in parity ' 
-        print*,a,b,c,d,j,t,vv 
+        print*,a,b,c,d,j,t,vv
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2460,7 +2611,9 @@ subroutine readv2bme_mfd(formattedfile,intcase)
         print*,a,b,c,d 
         print*,ia,ib,ic,id,J,T,vv 
         print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
-        print*,j,pnme(indx)%jmin,pnme(indx)%jmax             
+        print*,j,pnme(indx)%jmin,pnme(indx)%jmax
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      pnme(indx)%v(j)=pnme(indx)%v(j)+vpn*phase*factor 
@@ -2485,6 +2638,7 @@ subroutine readv2bme_mfd(formattedfile,intcase)
       write(logfile,*)' May cause problems in runs ! '
       end if
   end if
+  firstread= .false.
  
   return 
 end subroutine readv2bme_mfd 
@@ -2504,7 +2658,7 @@ end subroutine readv2bme_mfd
 !              pair2 = ic*(ic-1)/2 + id 
 ! 
 !===================================================================== 
-subroutine readv2bme_xpn(formattedfile,intcase) 
+subroutine readv2bme_xpn(firstread,formattedfile,intcase) 
    
   use io 
   use system_parameters 
@@ -2515,7 +2669,7 @@ subroutine readv2bme_xpn(formattedfile,intcase)
   use bmpi_mod 
   implicit none 
  
-  logical :: formattedfile 
+  logical :: firstread,formattedfile 
   integer :: intcase 
    
   integer :: a,b,c,d 
@@ -2558,7 +2712,8 @@ subroutine readv2bme_xpn(formattedfile,intcase)
   integer L 
   logical success 
   logical smint   !  a successor to .int  
-  logical finished  
+  logical finished,foundit
+  character(3) :: formattest  
 !--------- KSM - initialize for -Wuninitialized 
 ! set to values that would cause problems if used 
   it = -10000000 
@@ -2605,8 +2760,6 @@ subroutine readv2bme_xpn(formattedfile,intcase)
 		  
   end if
 
-
- 
 !-------------- READ PAST TITLE CARDS --------------------------- 
   success = .false. 
   do while(.not.success) 
@@ -2618,6 +2771,25 @@ subroutine readv2bme_xpn(formattedfile,intcase)
         read(1,'(a)')title 
         write(6,'(a)')title 
 		write(logfile,'(a)')title
+		call fileformatcheck(title,foundit,formattest)
+		if(foundit)then ! check format
+		   if((normalizedpn .and. formattest /= 'xpn') .or. & 
+		      (.not.normalizedpn .and. formattest /='upn')  )then
+		   print*,' '
+		   print*,'  WARNING !   '
+		   print*,' File appears to be in wrong format '
+		   print*,' Header denotes format as ',formattest
+		   print*,' Hint: If you want to read in xpn/upn format, '
+		   print*,' you must first enter xpn/upn before entering file name. '
+		   print*,' See manual for more details.'
+	       print*,'  SKIPPING FILE !   '
+ 		      print*,' '
+			  write(logfile,*)' File appears to be in wrong format '
+			  write(logfile,*)' Header denotes format as ',formattest
+		      write(logfile,*)'  SKIPPING FILE !   '
+			  return
+		  end if
+	    end if
      end if 
   end do 
 
@@ -2703,18 +2875,25 @@ end if
 	  spscale = 1
 	  pspescale = 1
 	  nspescale = 1
-		  bx = spetmp(numorb(1)+1)+ npeff(1)+npeff(2)
-		  ax = spetmp(numorb(1)+2)
-		  x = spetmp(numorb(1)+3)
+		  bx = spetmp(numorb(1)+numorb(2)+1)+ npeff(1)+npeff(2)
+		  ax = spetmp(numorb(1)+numorb(2)+2)
+		  x = spetmp(numorb(1)+numorb(2)+3)
 	      vscale = (ax/bx)**x 
 	      if(iproc==0)then
 	 		 print*,' Autoscaling ',ax,bx,x,vscale     
-			 print*,' I think I have a core of ', spetmp(numorb(1)+1)
+			 print*,' I think I have a core of ', spetmp(numorb(1)+numorb(2)+1)
 	          write(logfile,*)   ' Autoscaling  TBMEs by (',ax,'/',bx,')^',x,' = ',vscale      
 	 	 end if	  
-		 ppscale = vscale
-		 nnscale = vscale
-		 pnscale = vscale
+		 ppscale = 1
+		 nnscale = 1
+		 pnscale = 1
+	     do i = 1,numorb(1)
+	   	  pspe(i)=pspe(i) +spetmp(i)*pspescale*spscale
+	     end do
+  
+	     do i = 1,numorb(2)
+	   	  nspe(i)=nspe(i)+spetmp(i+neutron_offset)*nspescale*spscale
+	     end do
 	  
   else
 	  
@@ -2741,7 +2920,11 @@ end if
 
 !-------------- READ IN TBMEs ---------------- 
   write(logfile,*)nme,' two-body matrix elements in this file '
+  write(6,*)nme,' two-body matrix elements in this file '
+  
   maxsp = 0 
+  
+
   do i = 1,nme 
 !---------- ERROR TRAP ADDED July 2011 CWJ ------------------' 
      
@@ -2793,6 +2976,8 @@ end if
 	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
 	 		     orbqn(it,a)%j,orbqn(it,a)%l,  orbqn(it,b)%j,orbqn(it,b)%l,  orbqn(it,c)%j,orbqn(it,c)%l,  orbqn(it,d)%j,orbqn(it,d)%l	
 		close(logfile)		 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2833,7 +3018,9 @@ end if
  
      ipar = XXcouples(it)%pairc(pair1)%par 
      if(ipar /= XXcouples(it)%pairc(pair2)%par)then 
-        print*,' problem with parity, boss  (PP) ',a,b,c,d 
+        print*,' problem with parity, boss  (PP) ',a,b,c,d
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = XXcouples(it)%meref(ipar) 
@@ -2865,7 +3052,8 @@ end if
         write(logfile,*)' J = ',j,' but min/max for these pairs are ',ppme(indx)%jmin,ppme(indx)%jmax 
 
  		close(logfile)		
-         
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      ppme(indx)%v(j)=ppme(indx)%v(j)+vv*ppscale*phase  *vscale
@@ -2882,6 +3070,8 @@ end if
 		print*,' Some error should not have reached here '
 		print*,' NN ?'
 		print*,ia,ib,ic,id
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
 		stop
 	end if
 
@@ -2908,7 +3098,9 @@ end if
  	    write(logfile,'(" a b c d = ",4i4," J T = ",2i4," V_JT(ab,cd) = ",f10.5)')a,b,c,d,j,t,vv 
  	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
  	 		     orbqn(it,a)%j,orbqn(it,a)%l,  orbqn(it,b)%j,orbqn(it,b)%l,  orbqn(it,c)%j,orbqn(it,c)%l,  orbqn(it,d)%j,orbqn(it,d)%l	
- 		close(logfile)		
+ 		close(logfile)
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -2947,6 +3139,8 @@ end if
      ipar = XXcouples(it)%pairc(pair1)%par 
      if(ipar /= XXcouples(it)%pairc(pair2)%par)then 
         print*,' problem with parity, boss (NN in xpn) ',a,b,c,d 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      iref = XXcouples(it)%meref(ipar) 
@@ -2980,6 +3174,8 @@ end if
 !        print*,orbqn(it,a)%j,orbqn(it,b)%j,orbqn(it,c)%j,orbqn(it,d)%j 
 !        print*,nnme(indx)%jmax,nnme(indx)%jmin 
         close(logfile)
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      nnme(indx)%v(j)=nnme(indx)%v(j)+vv*nnscale*phase *vscale
@@ -3013,11 +3209,15 @@ end if
 	 if(a > numorb(1) .or. c > numorb(1))then
 		 print*,' wrong proton labels in element ',i
 		 print*,ia,ib,ic,id,j,t,vv
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
 		 stop
 	 end if
 	 if(b > numorb(2) .or. d > numorb(2) .or. b < 1 .or. d < 1)then
 		 print*,' wrong neutron labels in element ',i
 		 print*,ia,ib,ic,id,j,t,vv
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
 		 stop
 	 end if
 	 
@@ -3030,6 +3230,8 @@ end if
      factor = 0.5 
      if(a == b)factor = factor*sqrt(2.) 
      if(c == d) factor = factor*sqrt(2.) 
+	 
+	 if(a /=b .and. a ==d .and. b == c)factor=0.25
     end if	 
 !	 print*,i,a,b,c,d,factor
  
@@ -3050,6 +3252,8 @@ end if
  	    write(logfile,'(" I think orbital 2xJ,Ls are (respectively) ",4(i4,2x,i4,","))')  & 
            orbqn(1,a)%j,orbqn(1,a)%l,  orbqn(2,b)%j,orbqn(2,b)%l,  orbqn(1,c)%j,orbqn(1,c)%l,  orbqn(2,d)%j,orbqn(2,d)%l
  		close(logfile)		
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
  
@@ -3066,6 +3270,8 @@ end if
      ipar = PNcouples%pairc(pair1)%par 
      if(ipar /= PNcouples%pairc(pair2)%par)then 
         print*,' problem with parity, boss (pn 1)  ' 
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
         stop 
      endif 
      if(pair1 < pair2)then 
@@ -3097,7 +3303,8 @@ end if
  		 write(logfile,*)' Additional information ' 
          write(logfile,*)' J = ',j,' but min/max for these pairs are ',pnme(indx)%jmin,pnme(indx)%jmax 		
 		 close(logfile) 
-
+		print*,' STOPPING RUN '
+	    call BMPI_Abort(icomm,101,ierr)
  
         stop 
      endif 
@@ -3105,7 +3312,6 @@ end if
      pnme(indx)%v(j)=pnme(indx)%v(j)+vv*pnscale*phase*factor *vscale
 
   enddo  !nme 
-  close(1)
 !........... WARNING MESSAGES.... 
   if(maxsp < maxorblabel)then
      if(iproc==0)then
@@ -3139,7 +3345,20 @@ end if
       write(logfile,*)' END WARNING '
       end if
   end if
- 
+
+!......... ADDED IN 7.8.2.... GO ON TO LOOK FOR OFF-DIAGONAL SINGLE-PARTICLE  
+  call readinsppot('xpn',1,pspescale*spscale,nspescale*spscale,formattedfile,foundit)
+  if(foundit)then
+	  print*,' Finished reading in off-diagonal one-body potential '
+	  write(logfile,*)' Finished reading in off-diagonal one-body potential '
+  else
+	  print*,' No one-body potential beyond single-particle energies '
+	  write(logfile,*)' No one-body potential beyond single-particle energies '
+
+  end if
+  
+  close(1)
+  firstread=.false.
   return
 
 1899 continue
@@ -3854,9 +4073,217 @@ subroutine broadcastTBMEs
         end if 
  
         deallocate(indx1, indx2, xxme) 
+!....... BROADCAST sppot.....	
+        num_me = (numorb(1))**2+numorb(2)**2
+
+       allocate(xxme(num_me), stat=aerr) 
+       if(aerr /= 0) call memerror("broadcastTBMEs 6") 
+       if(iproc == 0) then 
+          ii = 0 
+          do i = 1, numorb(1)
+             do j = 1, numorb(1)
+                ii = ii + 1 
+
+                xxme(ii) = psppot(i,j)
+             end do 
+          end do               
+          do i = 1, numorb(2)
+             do j = 1, numorb(2)
+                ii = ii + 1 
+
+                xxme(ii) = nsppot(i,j)
+             end do 
+          end do   		  
+       end if 
+       call BMPI_Bcast(xxme, num_me, 0, icomm, ierr) 
+       if(iproc > 0) then 
+          ii = 0 
+          do i = 1, numorb(1)
+             do j = 1, numorb(1)
+                ii = ii + 1 
+
+                psppot(i,j)=xxme(ii) 
+             end do 
+          end do               
+          do i = 1, numorb(2)
+             do j = 1, numorb(2)
+                ii = ii + 1 
+
+                nsppot(i,j)=xxme(ii) 
+             end do 
+          end do   		  
+       end if 	   
+       deallocate(xxme) 
  
      end if 
  
   return 
 end subroutine broadcastTBMEs 
 !=============================================== 
+! ADDED IN 7.8.2  Jan 2018
+! looks for information in header on format
+! 
+!  INPUT
+!    dummyline(:)  : array of characters from header
+!
+!  OUTPUT
+!    foundit: if TRUE, then found a formattype
+!    formattype = 'def','mfd','xpn', or 'upn'
+
+subroutine fileformatcheck(dummyline,foundit,formattype)
+	implicit none
+	character(4),intent(in) :: dummyline
+	logical,intent(out)  :: foundit
+	character(3),intent(out) :: formattype
+	
+	foundit=.false.
+	
+	select case (dummyline(1:4))
+	
+	case ('!DEF','#DEF','!def','#def')
+	
+	foundit=.true.
+	formattype='def'
+	
+	case ('!XPN','#XPN','!xpn','#xpn')
+	
+	foundit=.true.
+	formattype='xpn'
+	
+	case ('!UPN','#UPN','!upn','#upn')
+	
+	foundit=.true.
+	formattype='upn'
+	
+	case ('!MFD','#MFD','!mfd','#mfd')
+	
+	foundit=.true.
+	formattype='mfd'
+	
+	case default
+	
+	foundit = .false.
+	
+    end select
+	
+	return
+end subroutine fileformatcheck
+
+!=============================================== 
+! ADDED IN 7.8.2  Jan 2018
+! CAPABILITY TO READ IN OFF DIAGONAL ONE-BODY SCALAR POTENTIAL
+!
+!  INPUT:
+!    formatchar = 'iso' to read in proton, neutron equally
+!               = 'pns' to read in proton, neutron separately in two-column format
+!    filenumber = unit number of the file to be read in
+!    spscalep,spscalen = scaling for proton, neutron
+!    isformatted = logical, if true read in as formatted file, else unformatted
+!
+!  OUTPUT  
+!    foundit = .true. if s.p. potential read,
+!              .false. if none
+
+subroutine readinsppot(formatchar,filenumber,spscalep,spscalen,isformatted,foundit)
+	use nodeinfo
+    use sporbit 
+    use coupledmatrixelements 
+	implicit none
+	character(3),intent(in) :: formatchar
+	integer,intent(in) :: filenumber
+	real(4) :: spscalep,spscalen
+	logical,intent(in)  :: isformatted
+	logical,intent(out) ::    foundit
+	character   :: xchar
+	logical   :: success
+	
+	integer :: nme
+	integer :: i,a,b
+	real(4) ::xpot,ypot
+	integer :: neutron_offset
+		
+	foundit =.false.
+	
+	if(iproc/=0)return
+	
+	if(.not.isformatted)then
+		print*,' Cannot read unformatted single particle potential at this time '
+		return
+	end if
+	
+    neutron_offset = numorb(1)
+	
+	
+!
+!  READ PAST ANY HEADER LINES	
+
+    success = .false.
+	do while (.not. success)
+       read(filenumber,'(a)',end=111,err=111)xchar
+	   if(xchar =='!' .or. xchar == '#')cycle
+	   success = .true.
+	   backspace(filenumber)
+   end do
+   read(filenumber,*,err=111,end=111)nme
+   print*,nme,' nonzero single particle scalar potential elements '
+   
+   if(nme==0)return   
+
+   do i = 1,nme
+	   select case (formatchar)
+	   
+	   case ('iso')
+	       read(filenumber,*,err=112,end=112)a,b,xpot
+		   psppot(a,b)=psppot(a,b)+xpot*spscalep
+		   nsppot(a,b)=nsppot(a,b)+xpot*spscalen
+		   if(a/=b)then
+			   psppot(b,a)=psppot(b,a)+xpot*spscalep
+			   nsppot(b,a)=nsppot(b,a)+xpot*spscalen			   
+		   end if
+		   
+	   case ('xpn')
+		       read(filenumber,*,err=112,end=112)a,b,xpot
+			   if(a <= neutron_offset .and. b <= neutron_offset)then
+			      psppot(a,b)=psppot(a,b)+xpot*spscalep
+   			      if(a/=b)then
+   				   psppot(b,a)=psppot(b,a)+xpot*spscalep
+			      end if
+   			   end if
+			   if(a > neutron_offset .and. b > neutron_offset)then
+			      nsppot(a-neutron_offset,b-neutron_offset)=nsppot(a-neutron_offset,b-neutron_offset)+xpot*spscalen
+   			      if(a/=b)then
+   				   nsppot(b-neutron_offset,a-neutron_offset)=nsppot(b-neutron_offset,a-neutron_offset)+xpot*spscalen
+			      end if
+   			   end if
+			   
+			   if(a <= neutron_offset .and. b > neutron_offset .or.  & 
+			    b <= neutron_offset .and. a > neutron_offset)then
+				print*,' Charge changing? check the s.p. potential at end of file ',a,b
+			end if
+
+
+		case('pns')
+		   read(filenumber,*,err=112,end=112)a,b,xpot,ypot
+		   psppot(a,b)=psppot(a,b)+xpot*spscalep
+		   nsppot(a,b)=nsppot(a,b)+ypot*spscalen
+		   if(a/=b)then
+			   psppot(b,a)=psppot(b,a)+xpot*spscalep
+			   nsppot(b,a)=nsppot(b,a)+ypot*spscalen			   
+		   end if
+	   end select
+	   
+   end do
+   foundit = .true.
+     
+    return
+	
+111 continue
+    return
+	
+112 continue
+    print*,' WARNING, abrupt end of file'	
+		
+
+end subroutine readinsppot
+
+
