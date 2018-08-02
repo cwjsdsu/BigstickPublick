@@ -145,6 +145,7 @@ subroutine writelogfile(writedirective)
     use butil_mod
     use localvectors
 	use timing
+!	use annexations
 	
 	implicit none
 	character*3 :: writedirective
@@ -182,6 +183,7 @@ subroutine writelogfile(writedirective)
 		write(6,*)' Flag wantUseVec2Thread = ',wantUseVec2Thread,' (set in module localvectors )'
 	    write(6,*)' Flag useHZSomp = ',useHZSomp,' (set in module localvectors )'
 	end if
+!	if(.not.allsamew)write(logfile,*)' Flag annexation_is_go = ',annexation_is_go,' (set in module annexations)'
 
 !..................... INFORMATION ON PRESET FLAGS...........	
 
@@ -311,14 +313,25 @@ subroutine writelogfile(writedirective)
 		write(logfile,*)' Time total in H mat-vec multiply  : ',time_hmult
 		write(logfile,*)' Time in reorthogonalization : ',timereorthog
    	    write(logfile,*)' '
-   	    write(logfile,*)' *** END OF LOG *** END OF LOG *** END OF LOG *** '
+!   	    write(logfile,*)' *** END OF LOG *** END OF LOG *** END OF LOG *** '
 		
 	    flush(logfile)
 		print*,' '
-		print*,' CLOSING LOG FILE '
-		print*,' '
-		close(logfile)
+!		print*,' CLOSING LOG FILE '
+!		print*,' '
+!		close(logfile)
+!
+case('end')
+
+    write(logfile,*)' '
+    write(logfile,*)' *** END OF LOG *** END OF LOG *** END OF LOG *** '
 	
+    flush(logfile)
+	print*,' '
+	print*,' CLOSING LOG FILE '
+	print*,' '
+	close(logfile)
+		
 	case default    !---------- ERROR TRAP ------------------
 	
 	write(logfile,*)' When calling routine writelogfile, directive ',writedirective,' not yet defined '

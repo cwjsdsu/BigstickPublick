@@ -916,28 +916,45 @@ end subroutine writeoutbasis
  integer ilast
 
  integer is,ib
+ integer :: ic,csd
+ 
 
  if(.not.print_sectors)return
 
- if(writeout .and. it == 1)then
+ if(it==1)then
+ if(writeout )then
     ilast = index(outfile,' ')-1
     open(unit=sector_file,file=outfile(1:ilast)//'.sectors',status='unknown')
  else
     open(unit=sector_file,file='sectors.bigstick',status='unknown')
  endif
+endif
 
  write(sector_file,*)' SECTORS ',it
  write(sector_file,*)nsectors(it)
  do is = 1,nsectors(it)
     write(sector_file,101)is, xsd(it)%sector(is)%jzX,xsd(it)%sector(is)%parX, xsd(it)%sector(is)%wX, &
-	    xsd(it)%sector(is)%basisstart,xsd(it)%sector(is)%basisend
-101 format(i4,' jz = ',i3,' par = ',i2,' W = ',i3,', basis from ',i12,' to ',i12)
+	    xsd(it)%sector(is)%basisstart,xsd(it)%sector(is)%basisend, xsd(it)%sector(is)%nxsd
+101 format(i4,' jz = ',i3,' par = ',i2,' W = ',i3,', basis from ',i12,' to ',2i12)
        do ib = 1,xsd(it)%sector(is)%nhblocks
          write(sector_file,201)ib, xsd(it)%sector(is)%lhblock(ib), xsd(it)%sector(is)%rhblock(ib)
 201 format(5x,' Block ',i3,' : ',2i4)
        enddo
+!	   if(it==1)then
+		   do ic = 1,xsd(it)%sector(is)%ncsectors
+			   csd = xsd(it)%sector(is)%csector(ic)
+			   write(sector_file,301)csd,xsd(2)%sector(csd)%nxsd
+301 format(5x,' Conjugate sector ',i5,i12)			   
+		   
+		   
+		   end do
+		   
+!	   end if
+	   
 
  enddo ! is
+ 
+ if(it==2)close(sector_file)
 
  return
 

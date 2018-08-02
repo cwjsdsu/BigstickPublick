@@ -8,6 +8,7 @@
 module flagger
   implicit none
 
+  logical :: timingdetails =.false.  ! if TRUE print out more timing information
 ! Tracing options - usefull with crashes on edison/hopper
   logical :: wantnoisy0 = .false.
   logical :: noisy0      ! iproc==0 .and. wantnoisy0.   See main
@@ -91,7 +92,7 @@ module flagger
    logical :: restrictjumps = .true.         ! if .true. then only store relevant jumps on a node
    logical :: setjumpceiling = .true.         ! memory ceiling on storing jumps
 !   real    :: maxjumpmemory_default  = 32.5    ! in Gb
-   real    :: maxjumpmemory_default  = 16.0    ! in Gb  KSM - for DM runs on Edison
+   real    :: maxjumpmemory_default  = 32.0    ! in Gb  KSM - for DM runs on Edison
    
 !............ STORAGE OF LANCZOS VECTORS IN CORE...........
 !              FIRST FOR A SINGLE PROCESSOR
@@ -119,7 +120,7 @@ module flagger
 !..............................OTHER.........................
 
    logical :: subsume_SPE = .true.   ! if TRUE, then subsume SPE into two-body matrix elements ADDED 7.8.0
-   logical :: annex_bundles = .false. ! if TRUE, then seek to annex bordering bundles which share jumps ADDED 7.8.0
+!   logical :: annex_bundles = .false. ! if TRUE, then seek to annex bordering bundles which share jumps ADDED 7.8.0
    
    logical  :: iffulluseph  = .true.    ! if TRUE, when a shell is filled, automatically turns to p-h conjugation
 

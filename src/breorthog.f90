@@ -16,6 +16,70 @@
 !     in the cluster.  
 !
 !  Initial version:  Aug 9, 2014 - Ken McElvain
+!
+!  SOME IMPORTANT NOTES ON STORING VECTORS IN HISTORY UNDER MPI
+!  (distributed memory)  added April 2018 in  7.8.4
+!
+!  BIGSTICK uses vectors in two operations: mat-vec multiplication
+!  and storage and linear algebra on previous Lanczos vectors
+!  
+!  For mat-vec multiplication, we break up vectors into FRAGMENTS.
+!  These are are LARGE as POSSIBLE because the factorization algorithm
+!  for mat-vec multiplication is most efficient for large loops.
+!  Fragments are defined in module fragments. Each MPI process
+!  has a vec1 and vec2, defined in module localvectors, with a fixed 
+!  fragment assigned to vec1 and a fixed fragment assigned to vec2.
+!  (They generally are not the same fragments.) Multiple MPI processes
+!  may have the same initial and final fragments. 
+!
+!  The start and stop of a fragment is defined by basestart(fragment)/basestop(fragment)
+!  which is known by all processes. On a given MPI process the start/end 
+!  for vec1 and vec2 are v1s,v1e and v2s,v2e, respectively.
+!
+!  For Lanczos vector storage/linear algebra, we use a different scheme.
+!  These processes are given over to storing and acting on Lanczos vectors.
+!  Each fragment is divided into slices.  Any given process 
+!  is assigned a specific slice, and it stores the same slice for ALL 
+!  Lanczos vectors. This slice is defined by the variables ostart and ostop.
+!  Storing slices aids in efficient linear algebra. In essence, when 
+!  carrying out dot products, one carries out the partial dot product within
+!  a slice, possibly for all vectors simultaneously. Then only that partial 
+!  dot product is broadcast and then combined to get the total dot product.
+!
+!  Each MPI process has a unique slice, defined by a unique ostart /ostop.
+!  These slices are stored in the variable br_histbuf
+!
+!  The working slice of a vector is call br_reg.
+!  The routines br_grab_vec1 and br_grab_vec2 take the appropriate slice of vec1/2
+!  and put it onto br_reg, respectively
+!  The routines br_restore_vec1 and br_restore_vec2 take the slice that is 
+!  br_reg and put into vec1 /vec2, respectively
+!
+!  The routine br_add2hist takes br_reg and adds to br_histbuf
+!  The routine br_retrieve_hist takes the slice from br_histbuf and puts into br_reg
+!  
+!  In otherwords we have 3 layers
+!
+!               br_histbuf (storage of slices of lanczos vectors)
+!                  |                  ^
+!                  V                  |
+!               br_reg   (a specified slice)
+!                  |                  ^
+!                  V                  |
+!                vec1     or  vec2
+!
+!  The routine setup_mpi_hist does the following:
+!     -- compute ostart and ostop for ALL MPI processes
+!     -- assign ostart and ostop for the current MPI process (iproc)
+!  If you set verbose_setup=.true. in setup_mpi_hist, it will printout the slices.
+!  These are ONLY nontrivial for MPI runs
+!
+!  Routine br_normalize normalizes br_reg across ALL slices, and returns its normalization
+!  Routine br_orthogonalize is a master routine for reorthgonalization
+!  Routine dot_product8 takes partial dot products of vectors
+!  Routine br_reorthogonalizes uses dot_product8 to take partial dot products between br_reg and a vector in br_hist
+!  and then subtracts it
+!
 !  
 !===========================================================================
 !  SUBROUTINES IN THIS FILE
@@ -229,6 +293,9 @@ end subroutine setup_mpi_hist_comm
 ! overlap.   We will make one set of communicators for pushing from vec1 and another
 ! set of communicators for pushing from vec2, but both will use the same source
 !
+! IMPORTANT: This routine defines variables ostart and ostop, which are the start and stop
+!  of storing Lanczos vectors in history
+!
 !  CALLED BY: setup_localvectors
 !
 subroutine setup_mpi_hist(maxiter)
@@ -248,6 +315,8 @@ subroutine setup_mpi_hist(maxiter)
    integer ::  whichfrag(0:nproc)    ! assignment for processor
    integer :: bestfrag
    real :: g, bestg
+   
+   logical :: verbose_setup = .true.
 
    br_histmax = maxiter+2
    piinfragcnt = 0
@@ -346,6 +415,19 @@ subroutine setup_mpi_hist(maxiter)
    br_histpos = 0 ! last written position
 
    call setup_mpi_hist_comm()  ! init  br_hcomm, tables for scatterv
+   
+   if(verbose_setup .and. iproc==0 )then
+	   open(unit=83, file='slices.bigstick',status='unknown')
+	   do pi = 0,nproc-1
+		   write(83,*)pi,br_ostartlist(pi),br_ostoplist(pi),br_ofraglist(pi)
+		   
+	   end do
+	   close(83)
+	   
+	   
+   end if
+	   
+   return
 end subroutine setup_mpi_hist
 !=============================================================================
 !  sets top of history stack (location) to pos

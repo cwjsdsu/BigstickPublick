@@ -687,6 +687,11 @@ end subroutine prepare_to_uncoupleXXtbme
    integer i,j
    character(1) obschar
    integer :: tmax2  ! maximal 2T
+   
+!---------- NEED TO ZERO OUT ONE-BODY POTENTIAL
+   
+   nsppot = 0.0
+   psppot = 0.0
 
 !----------- NOW SET UP SINGLE-PARTICLE
 
@@ -735,6 +740,8 @@ end subroutine prepare_to_uncoupleXXtbme
 !
 !  sets up arrays of COUPLED tbmes for observable either J or T
 !  
+!  CALLED BY:  setup4obsmaster
+!
   subroutine setup_obs_tbmes(obschar)
   use system_parameters
   use coupledmatrixelements

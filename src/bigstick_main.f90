@@ -1,135 +1,22 @@
-! !===========================================================================
+
+!===========================================================================
 !  BIGSTICK
 !
 !  Inspired by code REDSTICK by W. E. Ormand
 !  
-!    History (for more, see BIGSTICK_HISTORY.txt)
+!  for history see file WHATSNEW.txt
 !
-!  VERSION 2.0: Setting up for basis -- CWJ @ SDSU -- June/July 2008
-!  VERSION 3.0: BASIS DONE, hops include-- CWJ  @ SDSU -- OCT 2008
-!  VERSION 4.0: jumps done                 CWJ @ SDSU  -- DEC 2008
-!  VERSION 5.0   : 1-body jumps fixed in no-truncation case
-!...........................................................................  
-!  6.0   : Includes MPI codes from W. E. Ormand and P. G. Krastev    -- June 9, 2009
-!  6.4.17: successful 3-body version                                  -- Aug 2011 (CWJ)
-!  6.5.0 : Set runtime options for splitting Lanczos vector           -- February 2011 (PGK)
-!  6.6.0:  merged code                                                -- August 2011 (CWJ)
-!  6.6.6:  new "opbundles" for organizing application of Hamiltonian -- Sept 2011 (CWJ)
-!  6.6.7: fixed strength functions; added WEO's OpenMP; Oct 2011 (CWJ)
-!  6.6.9: improved usage of geneologies, chains Oct 2011 CWJ
-!  6.7.6:  opbundles fixed for use with 3-body
-!  6.7.7: OpenMP works with 3-body
-!  6.8.0: Rebooting MPI
-!  6.8.1: Single-precision Lanczos vectors; added "preconditioning"
-!  6.8.2: Fixed small bug in strength functions for "full" diagonalization
-!  6.8.3: Added "time-reversal" for pn matrix elements, saving some memory
-!                              (but taking more time)
-!  6.8.5: MPI counting of jump
-!  6.8.7: MPI distribution of operations and mock serial runs
-!  6.8.10: Improved instrumentation of timing;
-!          Added bapplyhlib3.f90: runs an operation all at once
-!  without leaving a subroutine;
-!          Corrected error in estimating # of NNN operations
-!  6.9.0:  Added weighting by timing
-!  
-!  7.0.0:  MPI Mark 1 runs correctly, including calculation of J^2, T^2 (Sept 2012, CWJ)
-!  7.0.2:  Reads in J-coupled 3-body matrix elements
-!  7.0.3:  restricts creation of jumps to MPI compute nodes where needed (Nov 2012, CWJ)
-!  7.0.4:  storage of Lanczos across MPI compute nodes (Jan 2013, WEO)
-!  7.0.6:  internal storage of Lanczos vectors option even for single-processor (Mar 2013, CWJ)
-!  7.0.7:  RELEASE VERSION -- tested, although still problems in MPI
-!  7.0.8:  option to write lanczos vectors to disk even when storing internally; 
-!          coupled to restart option (Mar 2013, CWJ)
-!	   added OpenMP to expectation values ('x'), density matrices ('d') (Apr 2013/CWJ)
-!  7.0.9:  added double precision for eigenvalues (egv_prec in module precisions)
-!          capability to read in uncoupled/deformed TBMEs
-!  7.0.10: bugs in restart fixed
-!  7.1.0 : problem with precision in MPI orthogonalization in bparallellib4.f90 fixed
-!  7.1.1 : added switching order of loops in applyh if no OpenMP threading
-!  7.1.2/3 : made vector "reading"/"writing"/"orthogonalization" more uniform across
-!            parallelizations
-!          fixed bug in MPI when sorting jumps--only sort once
-!  7.1.4 : thick-restart now works when storing lanczos vectors in RAM (including MPI)
-!          OpenMP for uncoupling PP/NN/PN matrix elements  (July 2013/CWJ)
-!  7.1.5 : improved handling of eigenvectors for compute J^2, T^2, TRDENS output
-!          now store eigenvectors internally (if lanczos vectors stored)
-!  7.1.6 : switch order of loops in applyh extended to 3-body
-!  7.1.7 : turned off OpenMP for computing traces
-!  7.1.8 : "improved" menu for Lanczos
-!  7.1.9 : improved efficiency in MPI calculation of jumps; fixed occasional bug in computing jump distribution
-!  7.2.0-2: moving towards cap on storing jumps on a node
-!  7.2.3 : draft routines to cap storage of jumps on nodes (need further testing)
-!  7.2.4 : turned calculation of T back on even when breaking isospin
-!  7.2.5 : fixed bug for density matrices in exact diagonalization; 
-!          started towards p-h conjugation
-!          put all interfaces into 'binterfaces.inc'
-!          started towards direct storage of XX/XXX matrix elements
-!          computing % of wfns in W-truncation subspaces
-!  7.2.6 : p-h conjugation works now especially for just one species changed
-!  7.2.8 : allowed for different W-truncation for proton, neutron spaces (Feb 2014)
-!        : corrections to deformed option
-!  7.2.10: calculate break-up of Lanczos vectors
-!  7.2.11: RELEASE VERSION April 23 2014
-!  7.2.12: Simpler (non-optimized) breakup of Lanczos vectors into fragments; distributing work bewtween fragments
-!  7.2.13: Fixed an MPI bug in write_wfn_header; improved timing of jump creation and decoupling of matrix elements
-!          fixed some initialization errors
-!  7.2.14: More work on breaking up lanczos vectors into fragments; detailed notes on distribution 
-!          (header of bparallel_lib1.f90)
-!          Started work on alternative storage of PN, PPN, PNN uncoupled matrix elements NEEDS TO BE REVISED
-!          Adding timing of "descendents" mostly to see where jump creation time is going.
-!  7.2.15: Continued work on breaking up lanczos vectors; working draft of distribution routines
-!  
-!  7.3.0 : MPI distribution over fragments
-!  7.3.1 : reorthgonalization routines over fragments (KSM)
-!  7.3.3 : Fixing some input routines for isospin breaking (WEO)
-!          Added environment variables for input files directories BIG_SPS_DIR and BIG_INT_DIR (WEO)
-!  7.3.4 : Fixed some run-time information on distributing jumps
-!  7.3.5 : improved reorthgonalization (KSM)
-!  7.3.6 : started toward improved distribution of PN etc matrix elements (CWJ); 
-!          can now write fragmented vectors to disk (KSM)
-!          reinstalled particle-occupation option
-!  7.3.7:  improved inline calculation of single-particle occupations
-!  7.3.8:  wrote and debugged opbundles for one-body densities
-!  7.3.9:  merged with updates from KSM, improved handling of MPI
-!  7.4.0:  more experiments with improved PN storage, introduced "introns" to study discontinuous storage of jumps
-!  7.4.1:  merged with updates from KSM, improved handling of particle occupations, MPI
-!       :  routines towards improved fragments
-!  7.4.2: Major upgrade of MPI wrappers (KSM) with more robust handling of data types/passing data
-!         Minor bugs in MPI calls fixed (KSM)
-!         More work on better distribution of jumps and deleting zeroes in jump arrays (via "introns" in bintron.f90)
-!         Started work on end-of-run report (module reporter/subroutine report)
-!         Fixed in part "overlap" option
-!  7.4.3  Overlap, apply scalar operator, and apply 1-body operator work in serial mode (at least)
-!  7.4.4  Fixing errors in running with 3-body forces; revisions to postprocessing options to provide uniformity
-!  7.4.5  Eliminated "subsectors"
-!  7.4.6  Returned to improved fragmentation based upon haiku blocks (in progress);
-!         fixed bugs in apply one-body nonscalar operators, overlap
-!  7.4.9  Improved fragmentation debugged; fixed a bug where we fail to assign processes between fragments
-!  7.5.0  Small fixes; moved towards OpenMP parallelism in counting jumps
-!  7.5.1  Progress on more compact jump storage (a.k.a. "intron deletion")
-!  7.5.2  Revising matrix element storage and decoupling to make it easier to port to other codes
-!  7.5.3  Improved storage of jumps (intron deletion) implemented in 1- and 2-body jumps
-!  7.5.4  Improved storage of jumps (intron deletion) implemented in 3-body jumps
-!  7.5.5  Removed "HF" and preconditioner; see older versions (7.5.4) if you want to reintroduce
-!         Fixed problem (at least in serial) reading .wfn files and computing density matrices
-!  7.5.6  Fixed density matrices to run in particle-hole conjugation 
-!  7.5.7  Fixed minor issues in processing answers with "exact" (Householder) diagonalization
-!  7.5.8 (skipped over; development of grouples for advanced storage)
-!  7.5.9  Changed # of uncouple matrix elements (nmatXX, nmatpn, etc) to integer(8)
-!  7.6.0  Added log file, timing of intron routines, minor fixes to p-h conjugation with truncation
-!  7.6.3  Rewrote lanczos routine so pivot is introduced outside it; added options to "improve" pivot
-!         by applying selected parts of the Hamiltonian
-!  7.6.5  Improved OpenMP caching KSM
-!  7.6.6  Fixed bugs in OpenMP caching on old compilers, compiles now on Vulcan
-!         Reading in prior wavefunctions works for fragments for options 'x', 's'
-!  7.6.7  Reorganized routines for 1-body densities and application; made latter
-!         conform to opbundle structures 
-!  7.6.8  Apply one-body should now work in MPI, with fragments 
-!  7.6.9  Continued reorganization / inclusion of subroutines into modules, esp. basis routines
-!  7.7.0  Inline 1-body densities work with MPI and fragments
-!         more reorganization of routines into modules, esp. parallel distribution routines
-!  7.7.1  1-body density matrices from old wavefunctions works in MPI now, incl. fragments
-!              for more updates see file WHATSNEW.txt
+!  A manual can be found under /docs or  arXiv:1801:08432
+!
+!  For references please cite
+! C. W. Johnson, W. E. Ormand, and P. G. Krastev,  Comp. Phys. Comm. 184, 2761-2774 (2013)
+! C. W. Johnson, W. E. Ormand, K. S. McElvain, and H.Z. Shan, arXiv:1801.08432
+! (report UCRL LLNL-SM-739926)
+!
+! This code is distributed under MIT Open Source License. 
+! Copyright (c) 2017 Lawrence Livermore National Security and San Diego State University Research Foundation
+! for full licence statement see README_Licenses.txt
+!
 !==================================================================
 ! IMPORTANT NOTES:  For more details see README_BIGSTICK.txt  (incomplete)
 !                 also see SUBROUTINE_SUMMARY.txt (incomplete)
@@ -240,6 +127,7 @@ program bigstick_main
   use onebodypot
   use shampoo
   use sp_potter
+!  use annexations
   implicit none
 
   integer(4) :: ierr
@@ -273,7 +161,7 @@ program bigstick_main
   call BMPI_COMM_RANK(icomm,iproc,ierr)
   call BMPI_COMM_SIZE(icomm,nproc,ierr)
   noisy0 = iproc == 0 .and. wantnoisy0
-
+  
   call MPI_GET_PROCESSOR_NAME(mpiprocname, mpiprocnamelen, ierr)
   ! On HPC machines, the "name" will describe the location of
   ! the physical processor.   For example, on edison
@@ -310,15 +198,16 @@ program bigstick_main
      write(6,*)' BIGSTICK: a CI shell-model code '
      write(6,*)' Version ',version,lastmodified
      write(6,*)' '
-     write(6,*)' by C. W. Johnson, W. E. Ormand, '
-     write(6,*)' K. S. McElvain, and H.Z. Shan '
      write(6,*)' For reference please cite: '
      write(6,*)' C. W. Johnson, W. E. Ormand, and P. G. Krastev '
-     write(6,*)' Comp. Phys. Comm. 184, 2761-2774 (2013) '
-     write(6,*)' [also found in arXiv:1303.0905] '
-     write(6,*)' and report UCRL LLNL-SM-739926 '
+     write(6,*)' Comp. Phys. Comm. 184, 2761-2774 (2013);  '
+     write(6,*)' and C. W. Johnson, W. E. Ormand, K. S. McElvain, H.-Z. Shan '
+     write(6,*)'  arXiv:1801.08432 and report UCRL LLNL-SM-739926 '
      write(6,*)' '
 	 write(6,*)' This code distributed under the MIT Open Source License '
+!	 write(6,*)' Copyright (c) 2017 Lawrence Livermore National Security '
+!	 write(6,*)' and San Diego State University Research Foundation
+
   end if
 
   ! read environment and setup paths like scratch_dir
@@ -543,6 +432,8 @@ end if
 
       call jumpmaster(hermflag,whermflagp,whermflagn,change1bodyqs,change2bodyqs,change3bodyqs)
       call updateopbundles
+!	  call annexleader
+!	  call surveyneighbors(.false.)
     
       if(iproc==0)print*,' jumps built '
       call clocker('ham','end')
@@ -632,6 +523,18 @@ end if
    end if
 
   if ( menu_char == 'a' ) then
+!.......... THIS IS A KLUGE....SHOULD PROPERLY PUT ELSEWHERE	   
+       do is = 1,nsectors(1)  ! loop over proton sectors
+         ndim = 0
+         do isc = 1,xsd(1)%sector(is)%ncsectors
+            jsc = xsd(1)%sector(is)%csector(isc)
+            ndim = ndim + xsd(2)%sector(jsc)%nxsd
+         end do ! isc
+         xsd(1)%sector(is)%ncxsd = ndim
+       end do
+	   
+       call BMPI_BARRIER(icomm,ierr)
+       call bundle_clock(0,'set')	  
      call BMPI_BARRIER(icomm,ierr)
      call applicator_h
   end if
@@ -642,11 +545,11 @@ end if
   end if
 
   call clocker('all','end')
-  call writelogfile('tim')  ! write summary information to 
+!  call writelogfile('tim')  ! write summary information to 
   call clockout('all')
   call clockout('bas')
   call clockout('jmc')
-  call clockout('des')
+   call clockout('des')
   call clockout('mes')
   call clockout('mun')
 
@@ -656,19 +559,21 @@ end if
      call clockout('dis')
   end if
   call clockout('s1b')
+  if(nproc > 1)call clockout('int')  ! ONLY DELETE INTRONS IF MPI 
+  
   call clockout('piv')
   
   call clockout('lan')
 
   call clockout('hmu')
   call clockout('spe')
-  if(threebody0)then  ! need to use threebody0 since threebody turned off for J,T
+  if(threebody0 )then  ! need to use threebody0 since threebody turned off for J,T
   call clockout('ppp')
   call clockout('ppn')
   call clockout('pnn')
   call clockout('nnn')
 
-  else
+else
   call clockout('pno')
   call clockout('pnb')
   call clockout('ppo')
@@ -682,17 +587,22 @@ end if
 !  call clockout('dot')
 !  call clockout('pro')
 !  call clockout('swp')
-  call clockout('obs')
-  call clockout('aob')
+
+  if(menu_char=='o')call clockout('aob')
   call clockout('egv')
   call clockout('eig')
-  if(nproc > 1)call clockout('int')  ! ONLY DELETE INTRONS IF MPI 
+  call clockout('obs')
+  
   if( trdensout) call clockout('trd')
 
   if ( menu_char == 'n' ) call clockout('wev')
-!  call bundle_clock_out  ! moved to main lanczos routine
+  if(densityflag)then
+      call clockout('den')
+     call clockout('obw')
+  end if
 
   call report
+  call writelogfile('end')
   call BMPI_BARRIER(icomm,ierr)
   call BMPI_FINALIZE(ierr)
   if ( iproc == 0 ) write(6,*)'End of main program.'

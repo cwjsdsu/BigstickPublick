@@ -208,6 +208,10 @@ end if
               print*,' Full diagonalization; keeping ',nkeep,' out of ',dimbasis
            case('ld')
               read(autoinputfile,*)nkeep,maxiter
+	          if(nkeep > dimbasis)nkeep = int(dimbasis, 4)
+	          if(maxiter < nkeep) maxiter = nkeep
+	          if(maxiter >= dimbasis) maxiter = int(dimbasis-1, 4)
+			  
               print*,' Default Lanczos convergence; keeping ',nkeep,' out of ',dimbasis
               print*,' Max ',maxiter,' iterations '
               niter = maxiter
@@ -217,12 +221,18 @@ end if
 
            case('lf')
               read(autoinputfile,*)nkeep,niter
+	          if(nkeep > dimbasis)nkeep = int(dimbasis, 4)
+	          if(niter < nkeep) niter = nkeep
+	          if(niter >= dimbasis) niter = int(dimbasis-1, 4)
               print*,' Fixed Lanczos iterations; keeping ',nkeep,' out of ',dimbasis
               print*,' with ',niter,' total Lanczos iterations '
 
            case('lc')
               print*,' User-defined Lanczos convergence '
               read(autoinputfile,*)nkeep,maxiter
+	          if(nkeep > dimbasis)nkeep = int(dimbasis, 4)
+	          if(maxiter < nkeep) maxiter = nkeep
+	          if(maxiter >= dimbasis) maxiter = int(dimbasis-1, 4)
               niter = maxiter
               print*,' Keeping ',nkeep,' eigenstates with max of ',maxiter,' iterations '
               read(autoinputfile,*)ncheck_ex
@@ -1270,7 +1280,11 @@ subroutine exactdiag_p
   call clocker('lan','sta')
 !----------------- CREATE FULL HAMILTONIAN MATRIX -----------
   if(iproc==0)open(unit=60,file='ham.dat',status='unknown')
-  if(printouthamflag)write(60,*)dimbasis
+  if(iproc==0 .and.printouthamflag)then
+	  write(60,*)dimbasis
+	  print*,' '
+	  print*,' Writing hamiltonian to ham.dat '
+  end if
   do i = 1, dimbasis
      vec1(:) = 0.d0
      vec1(i) = 1.d0

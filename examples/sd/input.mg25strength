@@ -1,0 +1,9 @@
+s      ! menu choice 
+mg25spin                                               
+mg25spinstrength1                                      
+usdb
+    1.0000   18.0000   25.0000    0.3000        ! scaling: xspe, A0,A,x 
+end
+          30          30    ! # states to keep, # iterations 
+1        ! which state from mg25spin to use as pivot
+

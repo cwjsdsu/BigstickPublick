@@ -60,8 +60,9 @@ EDISONF77_COMPILER=ftn     #  MPI FORTRAN 77 compiler name for EDISON
 MPI90_COMPILER_EDISON= ftn # mpiifort     #  MPI FORTRAN 90 compiler name for EDISON
 MPI77_COMPILER_EDISON= ftn # mpiifort     #  MPI FORTRAN 77 compiler name for EDISON
 OPT_edison="-c -fast -no-ipo"
-F77CFLAGS      =  -c -O2 # -fbounds-check      #  Fortran 77 compiler directives
-F90CFLAGS      =  -c  -O2 # -fbounds-check    #  Fortran 90 compiler directives
+# NOTE optimization flag -O3 does not seem to speedup
+F77CFLAGS      =  -c -O2  # -fbounds-check      #  Fortran 77 compiler directives
+F90CFLAGS      =  -c -O2 # -fbounds-check    #  Fortran 90 compiler directives
 #INTELCFLAGS    =  -c -O2    # default Intel compiler flags
 PGCFLAGS       ="-c -fast  " # PGI Fortran compiler directives
 LFLAGS_all     =          #  Linker directives

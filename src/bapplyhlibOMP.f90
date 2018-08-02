@@ -96,6 +96,7 @@ subroutine getLoadDist()
      mybasisstop(0)  = v2e
 
      do ibundle = startbundle, endbundle
+!		 if(opbundle(ibundle)%annexed)cycle
         xjmpstart = opbundle(ibundle)%pxstart
         xjmpend   = opbundle(ibundle)%pxend
         threadStart(ibundle, 0) = xjmpstart
@@ -118,6 +119,8 @@ subroutine getLoadDist()
 !$omp reduction(max : myoffmax) &
 !$omp reduction(min : myoffmin)  
   do ibundle = startbundle, endbundle
+!	 if(opbundle(ibundle)%annexed)cycle
+	  
 
      if (needInit) then
         myoffmin = v2e
@@ -223,6 +226,8 @@ if (verbose_ompham) write(*, 120) "p1b_isd ", iproc, size(p1b_isd), size(p1b_fsd
 !$omp reduction(+ : bucket) &
 !$omp reduction(+ : bucketw)
   do ibundle = startbundle, endbundle
+!	 if(opbundle(ibundle)%annexed)cycle
+	  
      
      if( opbundle(ibundle)%hchar == 'b')then
         p2b_1sd => p2b_fsd
@@ -507,6 +512,7 @@ end if
 !$omp private(pjmpstart, pjmpend, njmpstart, njmpend, pjmp, psdi) &    
 !$omp reduction(+ : count)    
     do ibundle = startbundle, endbundle
+!	   if(opbundle(ibundle)%annexed)cycle	
        
        if( opbundle(ibundle)%hchar == 'b')then
           p2b_1sd => p2b_fsd
@@ -967,6 +973,8 @@ subroutine applyHbundled_omp(vchar)
         
   mythread = omp_get_thread_num()
   do ibundle = opbundlestart(iproc), opbundleend(iproc)
+!	 if(opbundle(ibundle)%annexed)cycle
+	  
 
      t12 = BMPI_Wtime()
 
@@ -1705,6 +1713,7 @@ subroutine applyhPPbundled_omp (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'PP')cycle
       if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
       
       mythread = omp_get_thread_num()
 
@@ -1894,6 +1903,8 @@ subroutine applyhNNbundled_omp (vchar,hchar,startbundle,endbundle )
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'NN')cycle
       if(opbundle(ibundle)%hchar /= hchar )cycle
+!	  if(opbundle(ibundle)%annexed)cycle
+	  
       !....... Thread specific setup
       mythread = omp_get_thread_num()
 
@@ -2026,6 +2037,8 @@ subroutine applyhPNbundled_omp (vchar,hchar,startbundle,endbundle )
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'PN')cycle
       if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	  
       mythread = omp_get_thread_num()
       
       fs = opbundle(ibundle)%fsector
@@ -2178,6 +2191,8 @@ subroutine applySPEbundled_omp(vchar,startbundle,endbundle )
 !$omp  private(mythread)                              
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'SPE')cycle
+!	  if(opbundle(ibundle)%annexed)cycle
+	  
       mythread = omp_get_thread_num()
       if (threadStart(ibundle, mythread) > threadStop(ibundle, mythread)) cycle
 

@@ -1,4 +1,4 @@
-!=============================================================
+!============================================================2
 !
 ! collected routines for timing 
 !
@@ -70,6 +70,7 @@ subroutine clocker(timer,starter)
         time_reduce      = 0.0d0
         time_distr       = 0.0d0
         time_applobs     = 0.0d0
+		time_writeobs    = 0.0d0
         time_pp          = 0.0d0
 		time_ppb         = 0.0d0
 		time_pnb         = 0.0d0
@@ -155,6 +156,18 @@ subroutine clocker(timer,starter)
      else
         endobs   = timenow
      end if
+     case ('den')
+        if ( starter == 'sta' ) then
+           startdens = timenow
+        else
+           enddens   = timenow
+        end if	 
+     case ('obw')
+        if ( starter == 'sta' ) then
+           startwriteobs = timenow
+        else
+           endwriteobs   = timenow
+        end if
 
   case ('one')
      if ( starter == 'sta' ) then
@@ -463,74 +476,85 @@ subroutine clockout(timer)
   use io
   use nodeinfo
   use bmpi_mod
+  use flagger
   implicit none
 
   integer(4)       :: ierr
   character(len=3) :: timer
 
   select case (timer)
+  
+  case ('tmp')   ! time so far
+  if ( iproc == 0 ) then
+     print*,' Time to run so far : ',endall-startall
+!     if(writeout)write(resultfile,*)' Time to run after Lanczos : ',endall-startall
+     if(writeout)write(logfile,*)' Time to run after lanczos: ',endall-startall		
+  end if
 
   case ('all')
      if ( iproc == 0 ) then
+		print*,'  '
         print*,' Total time to run : ',endall-startall
         if(writeout)write(resultfile,*)' Total time to run : ',endall-startall
+        if(writeout)write(logfile,*)' Total time to run : ',endall-startall		
      end if
 
   case ('bas')
      if ( iproc == 0 ) then
-        print*,' Time to compute basis : ',endbasis-startbasis
-        if(writeout)write(resultfile,*)' Time to compute basis : ',endbasis-startbasis
+        if(timingdetails)print*,' Time to compute basis : ',endbasis-startbasis
+
+        if(writeout)write(logfile,*)' Time to compute basis : ',endbasis-startbasis
      end if
 
   case ('jmc')
      if ( iproc == 0 ) then
-        print*,' Time to count up jumps : ',time_jmpcnt
-        if(writeout)write(resultfile,*)' Time to count up jumps : ',time_jmpcnt
+        if(timingdetails)print*,' Time to count up jumps : ',time_jmpcnt
+        if(writeout)write(logfile,*)' Time to count up jumps : ',time_jmpcnt
      end if
   case ('des')
      if ( iproc == 0 ) then
-        print*,' Time to create descendents : ',time_desc
-        if(writeout)write(resultfile,*)' Time to create descendents : ',time_desc
+        if(timingdetails)print*,' Time to create descendents : ',time_desc
+        if(writeout)write(logfile,*)' Time to create descendents : ',time_desc
      end if
 
   case ('mes')
      if ( iproc == 0 ) then
-        print*,' Time to set up for matrix elements : ',time_meset
-        if(writeout)write(resultfile,*)' Time to setup for matrix elements : ',time_meset
+        if(timingdetails)print*,' Time to set up for matrix elements : ',time_meset
+        if(writeout)write(logfile,*)' Time to setup for matrix elements : ',time_meset
      end if
   case ('mun')
      if ( iproc == 0 ) then
-        print*,' Time to decouple matrix elements : ',time_munc
-        if(writeout)write(resultfile,*)' Time to decouple matrix elements : ',time_munc
+        if(timingdetails)print*,' Time to decouple matrix elements : ',time_munc
+        if(writeout)write(logfile,*)' Time to decouple matrix elements : ',time_munc
      end if
   case ('ham')
      if ( iproc == 0 ) then
-        print*,' Time to compute jumps : ',endham-startham
-        if(writeout)write(resultfile,*)' Time to compute jumps : ',endham-startham
+        if(timingdetails)print*,' Time to compute jumps : ',endham-startham
+        if(writeout)write(logfile,*)' Time to compute jumps : ',endham-startham
      end if
 
   case ('s1b')
      if ( iproc == 0 ) then
-        print*,' Time to sort 1b-jumps : ',ends1b-starts1b
-        if(writeout)write(resultfile,*)' Time to sort 1b-jumps : ',ends1b-starts1b
+        if(timingdetails)print*,' Time to sort 1b-jumps : ',ends1b-starts1b
+        if(writeout)write(logfile,*)' Time to sort 1b-jumps : ',ends1b-starts1b
      end if
 
   case ('p2b')
      if ( iproc == 0 ) then
-        print*,' Time to sort proton 2b-jumps : ',endp2b-startp2b
-        if(writeout)write(resultfile,*)' Time to proton sort 2b-jumps : ',endp2b-startp2b
+        if(timingdetails)print*,' Time to sort proton 2b-jumps : ',endp2b-startp2b
+        if(writeout)write(logfile,*)' Time to proton sort 2b-jumps : ',endp2b-startp2b
      end if
 
   case ('n2b')
      if ( iproc == 0 ) then
-        print*,' Time to sort neutron 2b-jumps : ',endn2b-startn2b
-        if(writeout)write(resultfile,*)' Time to neutron sort 2b-jumps : ',endn2b-startn2b
+        if(timingdetails)print*,' Time to sort neutron 2b-jumps : ',endn2b-startn2b
+        if(writeout)write(logfile,*)' Time to neutron sort 2b-jumps : ',endn2b-startn2b
      end if
 
   case ('lan')
      if ( iproc == 0 ) then
         print*,' Time to compute lanczos : ',endlanczos-startlanczos
-        if(writeout)write(resultfile,*)' Time to compute lanczos : ',endlanczos-startlanczos
+        if(writeout)write(logfile,*)' Time to compute lanczos : ',endlanczos-startlanczos
      
      end if
 
@@ -539,161 +563,170 @@ subroutine clockout(timer)
 !        print*,' Time in 2-body : ',time_pp+time_nn
 !        if(writeout)write(resultfile,*)' Time in 2-body : ',time_pp+time_nn !time2body
 
-        print*,' Time in reorthogonalization : ',timereorthog
-        if(writeout)write(resultfile,*)' Time in reorthogonalization : ',timereorthog
+        if(timingdetails)print*,' Time in reorthogonalization : ',timereorthog
+        if(writeout)write(logfile,*)' Time in reorthogonalization : ',timereorthog
      end if
 
   case ('obs')
      if ( iproc == 0 ) then
-        print*,' Time to compute J^2, T^2 : ',endobs -startobs
-        if(writeout)write(resultfile,*)' Time to compute J^2, T^2 : ',endobs -startobs
+        if(timingdetails)print*,' Time to compute J^2, T^2 : ',endobs -startobs
+        if(writeout)write(logfile,*)' Time to compute J^2, T^2 : ',endobs -startobs
      end if
-
+     case ('den')
+        if ( iproc == 0 ) then
+           if(timingdetails)print*,' Time to compute 1b densities : ',enddens -startdens
+           if(writeout)write(logfile,*)' Time to compute 1b densities: ',enddens -startdens
+        end if	 
+     case ('obw')
+        if ( iproc == 0 ) then
+           if(timingdetails)print*,' Time to write 1b densities : ',endwriteobs -startwriteobs
+           if(writeout)write(logfile,*)' Time to write 1b densities : ',endwriteobs -startwriteobs
+        end if
   case ('hop')
      if ( iproc == 0 ) then
-        print*,' Time to compute hops ',time_hops
-        if(writeout)write(resultfile,*)' Time to compute hops : ',time_hops
+        if(timingdetails)print*,' Time to compute hops ',time_hops
+        if(writeout)write(logfile,*)' Time to compute hops : ',time_hops
      end if
 
 ! Added by PGK..............................................................
   case ('aob')
      if ( iproc == 0 ) then
-        print*,' Time in applyobs : ',time_applobs
-        if(writeout)write(resultfile,*)' Time in applyobs : ',time_applobs
+        if(timingdetails)print*,' Time in applyobs : ',time_applobs
+        if(writeout)write(logfile,*)' Time in applyobs : ',time_applobs
      end if
   case ('dis')
      if ( iproc == 0 ) then
         print*,' Time to calculate distribution : ',time_distr
-        if(writeout)write(resultfile,*)' Time to calculate distribution : ',time_distr
+        if(writeout)write(logfile,*)' Time to calculate distribution : ',time_distr
      end if
   case ('blr')
      if ( iproc == 0 ) then
-        print*,' Time in reduce (in applyh only) : ',time_reduce
-        if(writeout)write(resultfile,*)' Time in reduce (in applyh only) : ',time_reduce
+        if(timingdetails)print*,' Time in reduce (in applyh only) : ',time_reduce
+        if(writeout)write(logfile,*)' Time in reduce (in applyh only) : ',time_reduce
      end if
    case ('wev')
      if ( iproc == 0 ) then
-        print*,' Time in writeeigenvec : ',time_writeeigvec
-        if(writeout)write(resultfile,*)' Time in writeeigenvec : ',time_writeeigvec
+        if(timingdetails)print*,' Time in writeeigenvec : ',time_writeeigvec
+        if(writeout)write(logfile,*)' Time in writeeigenvec : ',time_writeeigvec
      end if
 
   case ('one')
      if ( iproc == 0 ) then
-        print*,' Time in pn : ',time1body
-        if(writeout)write(resultfile,*)' Time in pn : ',time1body
+        if(timingdetails)print*,' Time in pn : ',time1body
+        if(writeout)write(logfile,*)' Time in pn : ',time1body
      end if
   case ('pno')
      if ( iproc == 0 ) then
-           print*,' Time in pn : ',time_pn
-           if(writeout)write(resultfile,*)' Time in pn : ',time_pn
+          if(timingdetails) print*,' Time in pn : ',time_pn
+           if(writeout)write(logfile,*)' Time in pn : ',time_pn
      end if
   case ('pnb')
      if ( iproc == 0 ) then
-           print*,' Time in pn(back) : ',time_pnb
-            if(writeout)write(resultfile,*)' Time in pn(back) : ',time_pnb
+         if(timingdetails)  print*,' Time in pn(back) : ',time_pnb
+            if(writeout)write(logfile,*)' Time in pn(back) : ',time_pnb
      end if	 
   case ('hmu')
      if ( iproc == 0 ) then
         print*,' Time total in H mat-vec multiply  : ',time_hmult
-        if(writeout)write(resultfile,*)' Time total in H mat-vec multiply  : ',time_hmult
+        if(writeout)write(logfile,*)' Time total in H mat-vec multiply  : ',time_hmult
      end if
 
   case ('ppo')
      if ( iproc == 0 ) then
-        print*,' Time in 2-body (pp) : ',time_pp
-        if(writeout)write(resultfile,*)' Time in 2-body (pp) : ',time_pp
+        if(timingdetails)print*,' Time in 2-body (pp) : ',time_pp
+        if(writeout)write(logfile,*)' Time in 2-body (pp) : ',time_pp
      end if
   case ('ppb')
         if ( iproc == 0 ) then
-           print*,' Time in 2-body (pp)(back) : ',time_ppb
+         if(timingdetails)  print*,' Time in 2-body (pp)(back) : ',time_ppb
            if(writeout)write(resultfile,*)' Time in 2-body (pp)(backwards) : ',time_ppb
         end if	 
   case ('nno')
      if ( iproc == 0 ) then
-        print*,' Time in 2-body (nn) : ',time_nn
-        if(writeout)write(resultfile,*)' Time in 2-body (nn) : ',time_nn
+        if(timingdetails)print*,' Time in 2-body (nn) : ',time_nn
+        if(writeout)write(logfile,*)' Time in 2-body (nn) : ',time_nn
      end if
 
   case ('ppp')
      if ( iproc == 0 ) then
-        print*,' Time in 3-body (ppp) : ',time_ppp
-        if(writeout)write(resultfile,*)' Time in 3-body (ppp) : ',time_ppp
+        if(timingdetails)print*,' Time in 3-body (ppp) : ',time_ppp
+        if(writeout)write(logfile,*)' Time in 3-body (ppp) : ',time_ppp
      end if
 
   case ('ppn')
      if ( iproc == 0 ) then
-        print*,' Time in 3-body (ppn) : ',time_ppn
-        if(writeout)write(resultfile,*)' Time in 3-body (ppn) : ',time_ppn
+        if(timingdetails)print*,' Time in 3-body (ppn) : ',time_ppn
+        if(writeout)write(logfile,*)' Time in 3-body (ppn) : ',time_ppn
      end if
 
   case ('pnn')
      if ( iproc == 0 ) then
-        print*,' Time in 3-body (pnn) : ',time_pnn
-        if(writeout)write(resultfile,*)' Time in 3-body (pnn) : ',time_pnn
+        if(timingdetails)print*,' Time in 3-body (pnn) : ',time_pnn
+        if(writeout)write(logfile,*)' Time in 3-body (pnn) : ',time_pnn
      end if
 
   case ('nnn')
      if ( iproc == 0 ) then
-        print*,' Time in 3-body (nnn) : ',time_nnn
-        if(writeout)write(resultfile,*)' Time in 3-body (nnn) : ',time_nnn
+        if(timingdetails)print*,' Time in 3-body (nnn) : ',time_nnn
+        if(writeout)write(logfile,*)' Time in 3-body (nnn) : ',time_nnn
      end if
 
   case ('dot')
      if ( iproc == 0 ) then
-        print*,' Time in normalization : ',time_dot
-        if(writeout)write(resultfile,*)' Time in normalization : ',time_dot
+        if(timingdetails)print*,' Time in normalization : ',time_dot
+        if(writeout)write(logfile,*)' Time in normalization : ',time_dot
      end if
   case ('pro')
      if ( iproc == 0 ) then
-        print*,' Time in projection : ',time_pro
-        if(writeout)write(resultfile,*)' Time in projection : ',time_pro
+        if(timingdetails)print*,' Time in projection : ',time_pro
+        if(writeout)write(logfile,*)' Time in projection : ',time_pro
      end if
   case ('swp')
      if ( iproc == 0 ) then
-        print*,' Time for vector swap : ',time_swp
-        if(writeout)write(resultfile,*)' Time for vector swap : ',time_swp
+        if(timingdetails)print*,' Time for vector swap : ',time_swp
+        if(writeout)write(logfile,*)' Time for vector swap : ',time_swp
      end if
   case ('spe')
      if ( iproc == 0 ) then
-        print*,' Time to apply sp energies : ',time_spe
-        if(writeout)write(resultfile,*)' Time to apply sp energies : ',time_spe
+        if(timingdetails)print*,' Time to apply sp energies : ',time_spe
+        if(writeout)write(logfile,*)' Time to apply sp energies : ',time_spe
      end if
   case ('rre')
      if ( iproc == 0 ) then
-        print*,' Time in reduce (reorthog. only) : ',time_rre
-        if(writeout)write(resultfile,*)' Time in reduce (reorthog. only) : ',time_rre
+        if(timingdetails)print*,' Time in reduce (reorthog. only) : ',time_rre
+        if(writeout)write(logfile,*)' Time in reduce (reorthog. only) : ',time_rre
      end if
   case ('ror')
      if ( iproc == 0 ) then
-        print*,' Time for read in reorthog. : ',time_ror
-        if(writeout)write(resultfile,*)' Time for read in reorthog. : ',time_ror
+        if(timingdetails)print*,' Time for read in reorthog. : ',time_ror
+        if(writeout)write(logfile,*)' Time for read in reorthog. : ',time_ror
      end if
   case ('egv')
      if ( iproc == 0 ) then
-        print*,' Time spent diagonalizing. : ',time_eig
-        if(writeout)write(resultfile,*)' Time spent diagonalizing. : ',time_eig
+        if(timingdetails)print*,' Time spent diagonalizing. : ',time_eig
+        if(writeout)write(logfile,*)' Time spent diagonalizing. : ',time_eig
      end if
   case ('eig')
      if ( iproc == 0 ) then
-        print*,' Time to build eigenvectors. : ',time_eigvec
-        if(writeout)write(resultfile,*)' Time to build eigenvectors. : ',time_eigvec
+        if(timingdetails)print*,' Time to build eigenvectors. : ',time_eigvec
+        if(writeout)write(logfile,*)' Time to build eigenvectors. : ',time_eigvec
      end if
   case ('trd')
      if ( iproc == 0 ) then
-        print*,' Time to build trdens wave functions : ',time_trdens
-        if(writeout)write(resultfile,*)' Time to build trdens wave functions : ',time_trdens
+        if(timingdetails)print*,' Time to build trdens wave functions : ',time_trdens
+        if(writeout)write(logfile,*)' Time to build trdens wave functions : ',time_trdens
      end if
 
   case ('int')
      if ( iproc == 0 ) then
-        print*,' Time to compute and delete unused jump storage : ',time_intron
-        if(writeout)write(resultfile,*)' Time to compute and delete unused jump storage : ',time_intron
+        if(timingdetails)print*,' Time to compute and delete unused jump storage : ',time_intron
+        if(writeout)write(logfile,*)' Time to compute and delete unused jump storage : ',time_intron
      end if
 
   case ('piv')
      if ( iproc == 0 ) then
-        print*,' Time to set up pivot : ',time_pivot
-        if(writeout)write(resultfile,*)' Time to set up pivot : ',time_pivot
+        if(timingdetails)print*,' Time to set up pivot : ',time_pivot
+        if(writeout)write(logfile,*)' Time to set up pivot : ',time_pivot
      end if
 
 ! Temporary.................................................................
@@ -1794,6 +1827,8 @@ subroutine all_clocks_out
   use lanczos_info
 
   use para_bundles_mod
+  use localvectors,only:useHZSomp
+  use sectors
   implicit none
 
   integer iprocs
@@ -1805,12 +1840,21 @@ subroutine all_clocks_out
   integer iob
   real(8)  :: jmpstor
   integer(8)  :: localops
+  integer(8) :: length_ini, length_fin  ! length of initial, final sectors (p+n)
+  integer  :: ips,fps,ins,fns
   integer  :: ibundle
 
   real(8) :: tmp(10)
   real(8) ::expectedtime
   character(10) :: date,time,zone
   integer :: datetimeval(8)
+  integer omp_get_num_threads
+  
+  integer :: num_threads
+  
+  !$omp parallel shared(num_threads,iproc)  
+     num_threads = omp_get_num_threads()
+  !$omp end parallel
   
 !------ EVERY PROC SEND THEIR DATA TO PROC ZERO----
   if(iproc >0)then
@@ -1917,6 +1961,8 @@ if(iproc == 0)then
     write(logfile,*)' Average time per processor is ',avg_time, " max ", max_time
     write(logfile,*)' Overall efficiency is ',avg_time/max_time
   1002 format(1x,a3,2x,f7.2)
+  write(91,*)' useHZSomp = ',useHZSomp
+  write(91,*)num_threads,' OpenMP threads'
 
 !----------- NOW LOOP OVER MPI PROCESSES ----------------------
   do iprocs = 0,nprocs-1
@@ -2092,15 +2138,26 @@ if(iproc == 0)then
 !	 write(91,'(" Total time (s):          ",f12.3)')time_Ham_MPI(iprocs)
 	 
 !.......... PRINT OUT BUNDLE INFO..............
-     write(91,*)'# bundle /optype      # ops        total time(s)     time/op (ns)'	 
+     write(91,'("# bundle /optype  # ops  # p-jumps  # n-jumps  initial basis,  final basis  total time(s) time/op (ns)	")')
+!	 '# bundle /optype     # ops    # p-jumps   # n-jumps  initial basis,  final basis     total time(s) time/op (ns)'	 
      do iob=opbundlestart(iprocs), opbundleend(iprocs)
  		if(nproc == 1)call analyze_opbundle(iob,.false.,jmpstor)
+		
+		call bundle_basis(iob,length_ini,length_fin)
+
+!		length_ini = xsd(1)%sector(ips)
+!		length_ini = int(xsd(1)%sector( ips)%nxsd,8)* int(xsd(2)%sector( ins)%nxsd,8)
+!		length_fin = int(xsd(1)%sector( fps)%nxsd,8)* int(xsd(2)%sector( fns)%nxsd,8)
+
        localops =  int( opbundle(iob)%pxend -opbundle(iob)%pxstart+1,8)* & 
             int( opbundle(iob)%nxend -opbundle(iob)%nxstart+1,8)
-       write(91,'(i8,2x,2a3,1i12,f21.6,f17.4)')iob,  & 
+       write(91,'(i8,x,a3,a1,i14,4i12,f20.4,f11.3)')iob,  & 
              opbundle(iob)%optype,opbundle(iob)%hchar, & 
-            localops,  time_bundle(iob),  &  
+            localops, int( opbundle(iob)%pxend -opbundle(iob)%pxstart+1,8),  & 
+			int( opbundle(iob)%nxend -opbundle(iob)%nxstart+1,8), & 
+			length_ini,length_fin,time_bundle(iob),&  
             time_bundle(iob)*1.0e9/dfloat(localops*actual_iterations) 
+!			write(92,*)iob,ips,ins,fps,fns,xsd(1)%sector( ips)%nxsd,xsd(2)%sector( ins)%nxsd
      end do
 
     end do  !iprocs

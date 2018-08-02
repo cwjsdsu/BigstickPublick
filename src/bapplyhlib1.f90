@@ -17,6 +17,8 @@
 !  comment out the statements with "contiguous" and 
 !  uncomment the lines without
 !
+!  added in 7.8.3: skip 'annexed' opbundles; removed in 7.8.4 
+!
 module contigpointervectors
 	use precisions
 	implicit none
@@ -378,6 +380,7 @@ subroutine applyhPPbundled_orig (vchar,hchar,startbundle,endbundle )
 
      if(opbundle(ibundle)%optype /= 'PP')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
 	 
 	 if(diagonalsectorsonly .and. opbundle(ibundle)%isector /= opbundle(ibundle)%fsector)cycle
 	 
@@ -565,6 +568,8 @@ subroutine applyhPPbundled_thread (vchar,hchar,startbundle,endbundle )
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'PP')cycle
       if(opbundle(ibundle)%hchar /= hchar )cycle
+! 	  if(opbundle(ibundle)%annexed)cycle
+	  
 	  call bundle_clock(ibundle,'sta')
 	  
       num_threads =  omp_get_num_threads()
@@ -804,6 +809,8 @@ subroutine applyhNNbundled_orig (vchar,hchar,startbundle,endbundle )
       do ibundle = startbundle,endbundle
          if(opbundle(ibundle)%optype /= 'NN')cycle
          if(opbundle(ibundle)%hchar /= hchar )cycle
+!		 if(opbundle(ibundle)%annexed)cycle
+		 
          if(diagonalsectorsonly .and. opbundle(ibundle)%isector /= opbundle(ibundle)%fsector)cycle
 	     call bundle_clock(ibundle,'sta')
 		 
@@ -991,6 +998,8 @@ subroutine applyhNNbundled_thread (vchar,hchar,startbundle,endbundle )
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'NN')cycle
       if(opbundle(ibundle)%hchar /= hchar )cycle
+! 	  if(opbundle(ibundle)%annexed)cycle
+	  
 	  call bundle_clock(ibundle,'sta')
 	  
 !....... Thread specific setup
@@ -1167,6 +1176,8 @@ subroutine applyhPNbundled_orig (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
 	 if(diagonalsectorsonly .and. opbundle(ibundle)%isector /= opbundle(ibundle)%fsector)cycle
      call bundle_clock(ibundle,'sta')
 
@@ -1449,6 +1460,8 @@ subroutine applyhPNbundled_thread (vchar,hchar,startbundle,endbundle )
       do ibundle = startbundle,endbundle
          if(opbundle(ibundle)%optype /= 'PN')cycle
          if(opbundle(ibundle)%hchar /= hchar )cycle
+!		 if(opbundle(ibundle)%annexed)cycle
+		 
 	     call bundle_clock(ibundle,'sta')
 		 
          mythread = omp_get_thread_num()
@@ -1686,6 +1699,8 @@ subroutine applyhPNbundledTR_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
 !
   pjmpstart = opbundle(ibundle)%pxstart
@@ -1860,6 +1875,8 @@ subroutine applySPEbundled_orig (vchar,startbundle,endbundle )
 
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'SPE')cycle
+! 	  if(opbundle(ibundle)%annexed)cycle
+	  
 	  call bundle_clock(ibundle,'sta')
 
       psdstart = opbundle(ibundle)%pxstart
@@ -1946,6 +1963,7 @@ subroutine applySPEbundled_thread(vchar,startbundle,endbundle )
    do ibundle = startbundle,endbundle
       if(opbundle(ibundle)%optype /= 'SPE')cycle
 	  call bundle_clock(ibundle,'sta')
+! 	  if(opbundle(ibundle)%annexed)cycle
 	  
       mythread = omp_get_thread_num()
       !! voutp(v2s:v2e) => vec2thread(:, mythread)
@@ -2084,6 +2102,7 @@ subroutine applyhPPPbundled_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PPP')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
 
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
 
@@ -2265,6 +2284,7 @@ subroutine applyhNNNbundled_g (vchar,hchar,startbundle,endbundle )
       do ibundle = startbundle,endbundle
          if(opbundle(ibundle)%optype /= 'NNN')cycle
          if(opbundle(ibundle)%hchar /= hchar )cycle
+!		 if(opbundle(ibundle)%annexed)cycle
 
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
 !        csdstart = pstart(opbundle(ibundle)%pxstart)
@@ -2438,6 +2458,8 @@ subroutine applyhPNNbundledTR_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PNN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -2511,6 +2533,8 @@ else
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PNN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -2698,6 +2722,8 @@ subroutine applyhPNNbundled_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PNN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -2765,6 +2791,8 @@ else
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PNN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -2949,6 +2977,8 @@ subroutine applyhPPNbundled_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PPN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -3019,6 +3049,8 @@ else
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PPN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -3204,6 +3236,8 @@ subroutine applyhPPNbundledTR_g (vchar,hchar,startbundle,endbundle )
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PPN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -3276,6 +3310,8 @@ else
   do ibundle = startbundle,endbundle
      if(opbundle(ibundle)%optype /= 'PPN')cycle
      if(opbundle(ibundle)%hchar /= hchar )cycle
+!	 if(opbundle(ibundle)%annexed)cycle
+	 
   numpthreads = opbundle(ibundle)%numpthreads
   numnthreads = opbundle(ibundle)%numnthreads
 !...... EXTRACT INFORMATION FROM OPBUNDLE ........
@@ -3389,6 +3425,8 @@ subroutine applyPNavgdiag(vchar,startbundle,endbundle)
 
     do ibundle = startbundle,endbundle
        if(opbundle(ibundle)%optype /= 'SPE')cycle
+!  	   if(opbundle(ibundle)%annexed)cycle
+	   
        is=opbundle(ibundle)%isector
 	   if(is < 0 .or. is > nsectors(1))then
 		   print*,' some problem with sectors in pn diagonal trace '

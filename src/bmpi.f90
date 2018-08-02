@@ -1260,6 +1260,8 @@ subroutine BMPI_REDUCE_REAL8_VECIP(sendbuf,  count, op, root, comm, ierr)
    ! locals
    integer(kind=8) :: ss, se, slicesize, over, lim
    integer :: scnt
+   integer :: rank
+   integer :: rierr
    integer :: csize
 
    if(count > size(sendbuf, 1, 8)) call BMPI_ERR("BMPI_REDUCE count>size")
@@ -1267,6 +1269,8 @@ subroutine BMPI_REDUCE_REAL8_VECIP(sendbuf,  count, op, root, comm, ierr)
    if(csize == 1) then
       return
    end if
+   call MPI_COMM_RANK(comm, rank, rierr)
+   
    slicesize = bmpi_maxbcastsize / 8
    ss = LBOUND(sendbuf, 1, 8)
    lim = ss + count - 1
@@ -1275,7 +1279,12 @@ subroutine BMPI_REDUCE_REAL8_VECIP(sendbuf,  count, op, root, comm, ierr)
       over = se-lim
       if(over > 0) se = se - over
       scnt = int(se - ss,4) + 1
-      call MPI_REDUCE(MPI_IN_PLACE, sendbuf(ss:se), scnt, MPI_REAL8, op, root, comm, ierr)
+      if(rank == root) then
+         call MPI_REDUCE(MPI_IN_PLACE, sendbuf(ss:se), scnt, MPI_REAL8, op, root, comm, ierr)
+      else
+         call MPI_REDUCE(sendbuf(ss:se), sendbuf(ss:se), scnt, MPI_REAL8, op, root, comm, ierr)
+      end if
+ !     call MPI_REDUCE(MPI_IN_PLACE, sendbuf(ss:se), scnt, MPI_REAL8, op, root, comm, ierr)
       ss = se + 1
    end do
 end subroutine BMPI_REDUCE_REAL8_VECIP

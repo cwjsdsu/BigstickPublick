@@ -1,4 +1,4 @@
-!CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+!CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC.true.
 !  BIGSTICK CI shell-model code
 !
 !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -228,8 +228,8 @@ subroutine hoopmaster(hermflag,whermflagp,whermflagn,change1bodyqs,change2bodyqs
         if( np(1)*(np(2) -1 ) > 0)then   ! PNN
            call set1bsectorjumps(1, .false. , .true. , .false. ,   .true. )
            call set1bsectorjumps(1, .true. , .true. , .false. ,   .true. )
-           call set2bsectorjumps(2,.false., .true., .true.,   .true. , 1)
-           call set2bsectorjumps(2,.true., .true., .true.,   .true. , 1)
+           call set2bsectorjumps(2,.false., .true., .true.,   .true. , .true., 1)
+           call set2bsectorjumps(2,.true., .true., .true.,   .true. ,.true., 1)
            call masterXXYconjugatejumps(2)
 
         endif
@@ -238,8 +238,8 @@ subroutine hoopmaster(hermflag,whermflagp,whermflagn,change1bodyqs,change2bodyqs
            call set1bsectorjumps(2, .false. , .true. , .false. ,   .true. )
            call set1bsectorjumps(2, .true. , .true. , .false. ,   .true. )
 
-           call set2bsectorjumps(1,.false.,  .true., .true.,  .true. , 1)
-           call set2bsectorjumps(1,.true.,  .true., .true.,  .true. , 1)
+           call set2bsectorjumps(1,.false.,  .true., .true.,  .true. ,.true., 1)
+           call set2bsectorjumps(1,.true.,  .true., .true.,  .true. ,.true., 1)
 
            call masterXXYconjugatejumps(1)
         endif
@@ -266,16 +266,16 @@ subroutine hoopmaster(hermflag,whermflagp,whermflagn,change1bodyqs,change2bodyqs
 
      if(np(1) > 1)then
 
-         call set2bsectorjumps(1,.false.,  hermflag, .true. ,change2bodyqs, 2 )
-         call set2bsectorjumps(1,.true.,  hermflag, .true. ,change2bodyqs, 2 )
+         call set2bsectorjumps(1,.false.,  hermflag, .true. ,change2bodyqs, .true., 2 )
+         call set2bsectorjumps(1,.true.,  hermflag, .true. ,change2bodyqs,.true., 2 )
          call masterfindconjumps2b(1)
         call master2bodyjumps(1,.false.  )
 
      endif
 
      if(np(2) > 1)then
-         call set2bsectorjumps(2,.false.,  hermflag, .true. ,change2bodyqs, 2 )
-         call set2bsectorjumps(2,.true.,  hermflag, .true. ,change2bodyqs, 2 )
+         call set2bsectorjumps(2,.false.,  hermflag, .true. ,change2bodyqs,.true., 2 )
+         call set2bsectorjumps(2,.true.,  hermflag, .true. ,change2bodyqs,.true., 2 )
        call masterfindconjumps2b(2)
        call master2bodyjumps(2,.false. )
      endif
@@ -538,8 +538,8 @@ subroutine master1bodyjumps(it,fill)
         if(allocated(p1b_isd))then
            if(size(p1b_isd) < totp1bjumps)then
               if ( iproc == 0 ) then
-                 print*,' WARNING RESIZING '
-                 print*,totp1bjumps,size(p1b_isd)
+                 print*,' WARNING RESIZING proton 1b jumps  '
+                 print*,totp1bjumps,' jumps increased from ',size(p1b_isd)
 			 end if
              deallocate(p1b_isd, p1b_fsd,p1b_cop,p1b_dop,p1b_phase)
              allocate(p1b_isd( totp1bjumps), stat=aerr)
@@ -585,7 +585,7 @@ subroutine master1bodyjumps(it,fill)
            if ( size(n1b_isd) < totn1bjumps ) then
               if ( iproc == 0 ) then
                  print*,' WARNING RESIZING neutron 1b jumps '
-                 print*,totn1bjumps,size(n1b_isd)
+                 print*,totn1bjumps,' jumps increased from ',size(n1b_isd)
               end if
               deallocate(n1b_isd, n1b_fsd,n1b_cop,n1b_dop,n1b_phase)
               allocate(n1b_isd( minjump:maxjump), stat=aerr)
@@ -1271,7 +1271,7 @@ end subroutine set1bsectorjumps
 !
 !  NB: THIS MIGHT BE CHANGED DEPENDING ON HERMITICITY
 !
-subroutine set2bsectorjumps(it,create,hermflag,whermflag,changeq,ndm )
+subroutine set2bsectorjumps(it,create,hermflag,whermflag,changeq,changew,ndm )
 
    use sectors
    use system_parameters
@@ -1285,6 +1285,7 @@ subroutine set2bsectorjumps(it,create,hermflag,whermflag,changeq,ndm )
    logical :: hermflag  !  flag to signal to use general hermiticity
    logical :: whermflag  ! flag to signal use hermiticity on W specifically
    logical :: changeq ! flag for allowing change of q#s
+   logical :: changew ! flag for allowing change of W--usually TRUE but set FALSE for J2,T2
    integer :: ndm    ! input into maxdelJz
    integer :: nsjmps
    integer :: is,fs
@@ -1308,6 +1309,7 @@ subroutine set2bsectorjumps(it,create,hermflag,whermflag,changeq,ndm )
         fjz = xsd(it)%sector(fs)%jzX
         fpar= xsd(it)%sector(fs)%parX
         fw  = xsd(it)%sector(fs)%wX
+		if(.not.changew .and. iw/=fw)cycle
         if(.not.changeq .and. ( ijz /= fjz .or. ipar /= fpar)) cycle
         if(.not.changeq .and. whermflag .and. iw < fw)cycle
         if(hermflag)then        
@@ -2336,6 +2338,7 @@ use nodeinfo
 use bmpi_mod
 use para_main_mod
 use operation_stats
+!use annexations
 implicit none
 logical change1bodyqs,change2bodyqs,hermflag,whermflagp,whermflagn
 integer ierr
@@ -2349,6 +2352,8 @@ integer ierr
       print*,' Turning off intron deletion in jump storage '
   end if
   compactjumpstorage = .false.   ! don't use introns...??
+!  call set_unannexed
+  
 !----- CONDITIONS FOR RESETTING ----
 if(.not.threebody .and. .not.skipzeros)return
  
@@ -2393,8 +2398,8 @@ if(.not.threebody .and. .not.skipzeros)return
 
 
      if(np(1) > 1)then
-         call set2bsectorjumps(1,.false.,  hermflag, .true. ,change2bodyqs, 2 )
-         call set2bsectorjumps(1,.true.,  hermflag, .true. ,change2bodyqs, 2 )
+         call set2bsectorjumps(1,.false.,  hermflag, .true. ,change2bodyqs, .false., 2 )
+         call set2bsectorjumps(1,.true.,  hermflag, .true. ,change2bodyqs, .false., 2 )
          call masterfindconjumps2b(1)
 
         call master2bodyjumps(1,.false.  )
@@ -2403,8 +2408,8 @@ if(.not.threebody .and. .not.skipzeros)return
 
      if(np(2) > 1)then
 
-         call set2bsectorjumps(2,.false.,  hermflag, .true. ,change2bodyqs, 2 )
-         call set2bsectorjumps(2,.true.,  hermflag, .true. ,change2bodyqs, 2 )
+         call set2bsectorjumps(2,.false.,  hermflag, .true. ,change2bodyqs, .false., 2 )
+         call set2bsectorjumps(2,.true.,  hermflag, .true. ,change2bodyqs, .false., 2 )
        call masterfindconjumps2b(2)
 
        call master2bodyjumps(2,.false. )
@@ -2435,6 +2440,7 @@ if(.not.threebody .and. .not.skipzeros)return
 
      if(allocated(opbundle))deallocate(opbundle)
      call distro_opbundles_over_fragments
+	 if(iproc==0)print*,' Total opbundles for obs ',nopbundles
      call setMPIjumplimits(.false.)  !NOTE: might need to change logical flag
      if(np(1) > 1)then
 
@@ -2452,6 +2458,8 @@ if(.not.threebody .and. .not.skipzeros)return
         call master1bodyjumps(2,.true.)
 
      endif  
+	 	 
+!	 call set_unannexed
 
      call BMPI_BARRIER(icomm,ierr)
 

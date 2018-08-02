@@ -818,20 +818,20 @@ end subroutine write_out_basis
 !  write(  xsd_file,*)'       label          n          l          2j           2m     '
  ith = -1
 ! print*,' testing output ',nhsps
- write(wfnfile)nhsps(ith)
+ write(wfnfile)nhsps    ! MODIFIED IN 7.8.4---write all out at once
  do i = 1,nhsps(ith)  ! left states
    nstate = nstate + 1
    write(wfnfile)nstate,hspsqn(ith,i)%nr,hspsqn(ith,i)%l,hspsqn(ith,i)%j, & 
-   hspsqn(ith,i)%m
+   hspsqn(ith,i)%m,hspsqn(ith,i)%w
 
  enddo  ! i
  
  ith = 1
- write(wfnfile)nhsps(ith)
+! write(wfnfile)nhsps(ith)
  do i = 1,nhsps(ith)  ! right states
    nstate = nstate + 1
    write(wfnfile)nstate,hspsqn(ith,i)%nr,hspsqn(ith,i)%l,hspsqn(ith,i)%j, & 
-                             hspsqn(ith,i)%m
+                             hspsqn(ith,i)%m,hspsqn(ith,i)%w
  enddo  ! i
 !------------------- NEUTRON STATES -------------------------
 !  write(basis_file,*)' neutron single-particle states '   
@@ -839,19 +839,19 @@ end subroutine write_out_basis
 !  write(  xsd_file,*)' neutron single-particle states '   
 !  write(  xsd_file,*)'       label          n          l          2j           2m     '
  ith = -2
- write(wfnfile)nhsps(ith)
+! write(wfnfile)nhsps(ith)
  do i = 1,nhsps(ith)  ! left states
    nstate = nstate + 1
    write(wfnfile)nstate,hspsqn(ith,i)%nr,hspsqn(ith,i)%l,hspsqn(ith,i)%j, & 
-                             hspsqn(ith,i)%m
+                             hspsqn(ith,i)%m,hspsqn(ith,i)%w
  enddo  ! i
  
  ith = 2
- write(wfnfile)nhsps(ith)
+! write(wfnfile)nhsps(ith)
  do i = 1,nhsps(ith)  ! right states
    nstate = nstate + 1
    write(wfnfile)nstate,hspsqn(ith,i)%nr,hspsqn(ith,i)%l,hspsqn(ith,i)%j, & 
-                             hspsqn(ith,i)%m
+                             hspsqn(ith,i)%m,hspsqn(ith,i)%w
  enddo  ! i
 
 
@@ -957,6 +957,7 @@ write(wfnfile)nsectors(1),nxSD(1)
                          end do  ! i
 !---------------------------- WRITE OUT OCCUPIED STATES -----------------------
                           write(wfnfile)in, nstart(in),(nocc(i),i=1,np(2))
+!						  print*,in,nstart(in),nocc
 
 
 

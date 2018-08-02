@@ -1,4 +1,3 @@
-!
 !  MPI master notes:
 !    module nodeinfo :
 !     nproc = # of MPI proceses
@@ -33,7 +32,7 @@ module localvectors
    implicit none
    ! useVec2Thread gives each thread an independent buffer to write to.
    logical :: wantUseVec2Thread = .false.   ! combine with numthreads > 1 to set useVec2Thread
-   logical :: useHZSomp = .false.    ! flag for new OMP merged in 7.7.3 from HZS 
+   logical :: useHZSomp = .true.    ! flag for new OMP merged in 7.7.3 from HZS 
    double precision :: mpiStartTime
    
    logical :: useVec2Thread
@@ -265,7 +264,7 @@ module opbundles
      integer(8) :: nsetops   ! how many sets or block of operations there are
 			! NOTE: min_nop x netsops = nops
      integer(8) :: njumps
-	 logical    :: annexed    ! added 7.8.0 by CWJ -- if annexed, then the work is added to a nearby bundle
+!	 logical    :: annexed    ! added 7.8.0 by CWJ -- if annexed, then the work is added to a nearby bundle
 !     integer(kind=8) :: threadStart(0:MAXTHREADS), threadStop(0:MAXTHREADS)   ! added in 7.7.3 by HZS
 	 
   end type bund

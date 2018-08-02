@@ -765,6 +765,9 @@ subroutine split_draft_opbundles_frag(fill,nob_draft,ifrag,ffrag,myprocs,myprocs
          opbundle(dnob)%numpthreads  = draft_opbundle(iob)%numpthreads  !actually  = 0
          opbundle(dnob)%numnthreads  = draft_opbundle(iob)%numnthreads
          opbundle(dnob)%min_nop = draft_opbundle(iob)%min_nop
+!		 if(iproc==0 .and. opbundle(dnob)%optype=='NN')then
+!			 	print*, 'testing NN ', dnob, opbundle(dnob)%isector ,opbundle(dnob)%insector,opbundle(dnob)%fsector ,opbundle(dnob)%fnsector
+!			end if
          if(iob == nodestartob(jnode))then
             startz = nodestartz(jnode)
          else

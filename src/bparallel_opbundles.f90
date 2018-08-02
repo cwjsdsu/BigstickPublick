@@ -241,7 +241,7 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
   integer :: is,fs  ! indices for sectors
   integer(8):: xstartx,xendx,ystarty,yendy
   integer :: xsj, ysj, isj
-  integer :: cs,ncs,ics
+  integer :: cs,ncs,ics,csi,csf
   integer :: cstride
   integer :: insector,fnsector
   logical okay
@@ -297,18 +297,19 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
                xendx   = xstartx + x2bjump(1)%sjmp(xsj)%njumps-1
 
 !..........FIND START, STOP FOR NEUTRON SDs.........
-               cs = x2bjump(1)%csjmp(xsj)%cjump(1)  ! this is the first conjugate
+               csi = x2bjump(1)%csjmp(xsj)%cjump(1)  ! this is the first conjugate
                                                      ! neutron sector
-               ystarty = xsd(2)%sector(cs)%xsdstart
+               ystarty = xsd(2)%sector(csi)%xsdstart
                ncs = x2bjump(1)%csjmp(xsj)%ncjmps
-               cs  = x2bjump(1)%csjmp(xsj)%cjump(ncs)  
-               yendy = xsd(2)%sector(cs)%xsdend
+               csf  = x2bjump(1)%csjmp(xsj)%cjump(ncs)  
+               yendy = xsd(2)%sector(csf)%xsdend
                localops = int(yendy-ystarty+1,8)*int(xendx-xstartx+1,8)
 !..........CONVERT TO STATE INDICES
 
                cstride = 1
                nob = nob+1
                if(create) then  ! set up for PP operations
+!				if(iproc==0)print*,' test PP ',nob,is,fs,csi,csf
 
                   bundle(nob)%optype     = 'PP '
                   bundle(nob)%hchar      =  hchar
@@ -317,8 +318,8 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
                   bundle(nob)%nxstart    = ystarty
                   bundle(nob)%nxend      = yendy
                   bundle(nob)%cstride    = cstride
-                  bundle(nob)%insector= cs
-                  bundle(nob)%fnsector=cs
+                  bundle(nob)%insector= csi
+                  bundle(nob)%fnsector=csf
 !............. 'forward'.............
                   if(hchar=='f')then
                       bundle(nob)%ifragment  = ifrag
@@ -363,10 +364,10 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
                 if(.not.okay)cycle
                 if(xstartx==-99)then
                    xstartx = x2bjump(2)%sjmp(xsj)%nstart+1
-                   insector = xsj
+                   insector =x2bjump(2)%isector(xsj) !xsj
                 end if
                 xendx   = xendx+x2bjump(2)%sjmp(xsj)%njumps
-                fnsector = xsj
+                fnsector = x2bjump(2)%fsector(xsj) !xsj
              end do  ! xsj
              if(insector < 0) then
                print *, "insector < 0 in count_create_draft_opbundles_g"
@@ -382,6 +383,7 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
                 cstride = 1
                 nob = nob + 1
                 if(create) then  ! set up for NN operations
+!					if(iproc==0)write(95,*)nob,is,fs,insector,fnsector
 
                    bundle(nob)%optype     = 'NN '
                    bundle(nob)%hchar      = hchar
@@ -573,12 +575,12 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
             xendx   = xstartx + x3bjump(1)%sjmp(xsj)%njumps-1
 
 !..........FIND START, STOP FOR NEUTRON SDs.........
-            cs = x3bjump(1)%csjmp(xsj)%cjump(1)  ! this is the first conjugate
+            csi = x3bjump(1)%csjmp(xsj)%cjump(1)  ! this is the first conjugate
                                                      ! neutron sector
-            ystarty = xsd(2)%sector(cs)%xsdstart
+            ystarty = xsd(2)%sector(csi)%xsdstart
             ncs = x3bjump(1)%csjmp(xsj)%ncjmps
-            cs  = x3bjump(1)%csjmp(xsj)%cjump(ncs)  
-            yendy = xsd(2)%sector(cs)%xsdend
+            csf  = x3bjump(1)%csjmp(xsj)%cjump(ncs)  
+            yendy = xsd(2)%sector(csf)%xsdend
             cstride = 1
 
 !..........CONVERT TO STATE INDICES
@@ -593,8 +595,8 @@ subroutine count_create_draft_opbundles_g(draft,ifrag,ffrag,create,optype,hchar,
                bundle(nob)%nxstart    = ystarty
                bundle(nob)%nxend      = yendy
                bundle(nob)%cstride    = cstride
-               bundle(nob)%insector= cs
-               bundle(nob)%fnsector=cs
+               bundle(nob)%insector= csi
+               bundle(nob)%fnsector=csf
 !............. 'forward'.............
                if(hchar == 'f')then
                   bundle(nob)%ifragment  = ifrag
@@ -837,7 +839,7 @@ end subroutine count_create_draft_opbundles_g
 !   nodestopz : which set of operations to stop on
 !
 ! CALLED BY:
-!
+!   distro_opbundles_over_fragments
 !
 subroutine search_draft_opbundles4split_g ( nob_draft, nodestartob, nodestopob, nodestartz, nodestopz)
 
@@ -1374,5 +1376,112 @@ subroutine print_fragops
 	return
 	
 end subroutine print_fragops
+
+!=================================
+!
+! a subroutine to compute the size of the initial and final basis covered by an opbundle
+!
+!
+! INPUT:  iob = index of opbundle
+!
+! OUTPUT:
+!   ini_basis = length of the basis addressed by this opbundle for initial states
+!   fin_basis = length of the basis addressed by this opbundle for final states
+!
+subroutine bundle_basis(iob,ini_basis,fin_basis)
+	use sectors
+	use nodeinfo
+	implicit none
+	integer,intent(in) :: iob
+	integer(8),intent(out) :: ini_basis,fin_basis
+	integer(8) :: npsdi,npsdf,nnsdi,nnsdf   !  # of initial, final proton/neutron SDs
+	integer :: ps,ns
+	integer :: sstart,sstop
+	
+	
+	ini_basis=0
+	fin_basis=0
+	npsdi = 0
+	nnsdi = 0
+	npsdf = 0
+	nnsdf = 0
+	
+	select case (opbundle(iob)%optype)
+	
+	
+	case('PP','PP0','PPP')
+	
+	ps = opbundle(iob)%isector
+	npsdi = xsd(1)%sector(ps)%nxsd
+	ps = opbundle(iob)%fsector
+	npsdf = xsd(1)%sector(ps)%nxsd
+	
+	if( opbundle(iob)%insector<= opbundle(iob)%fnsector)then
+		sstart = opbundle(iob)%insector
+		sstop  = opbundle(iob)%fnsector
+	else
+		sstart = opbundle(iob)%fnsector
+		sstop  = opbundle(iob)%insector
+	end if
+	
+	do ns = sstart, sstop
+		nnsdi = nnsdi + xsd(2)%sector(ns)%nxsd
+	end do
+	nnsdf = nnsdi
+	
+	case('NN','NN0','NNN')
+	
+	ns = opbundle(iob)%insector
+	nnsdi = xsd(2)%sector(ns)%nxsd
+	ns = opbundle(iob)%fnsector
+	nnsdf = xsd(2)%sector(ns)%nxsd
+	
+	if( opbundle(iob)%isector<= opbundle(iob)%fsector)then
+		sstart = opbundle(iob)%isector
+		sstop  = opbundle(iob)%fsector
+	else
+		sstart = opbundle(iob)%fsector
+		sstop  = opbundle(iob)%isector
+	end if
+	
+	do ps = sstart, sstop
+		npsdi = npsdi + xsd(1)%sector(ps)%nxsd
+	end do
+	npsdf = npsdi
+	
+	case('PN','PN0','PPN','PNN')
+	ps = opbundle(iob)%isector
+	npsdi = xsd(1)%sector(ps)%nxsd
+	ps = opbundle(iob)%fsector
+	npsdf = xsd(1)%sector(ps)%nxsd	
+	
+	ns = opbundle(iob)%insector
+	nnsdi = xsd(2)%sector(ns)%nxsd
+	ns = opbundle(iob)%fnsector
+	nnsdf = xsd(2)%sector(ns)%nxsd
+	
+	case default
+	
+	print*,' THIS SELECTION NOT AVAILABLE '
+	print*,' ERROR IN bundle_basis '
+	print*,iob,opbundle(iob)%optype
+	stop
+	
+    end select
+	
+	ini_basis = npsdi*nnsdi
+	fin_basis = npsdf*nnsdf
+	
+	if(iproc==0)write(93,'(5i8)')iob,opbundle(iob)%isector,opbundle(iob)%fsector,opbundle(iob)%insector,opbundle(iob)%fnsector,& 
+	npsdi,nnsdi,npsdf,nnsdf
+	
+	
+	return
+	
+end subroutine bundle_basis
+	
+	
+	
+	
 
 end module para_bundles_mod

@@ -1,4 +1,4 @@
-!===========================================================================
+!==========================================================================2
 ! MODULES FOR BIGSTICK
 !===========================================================================
 !
@@ -80,8 +80,8 @@ end module menu_choices
   module program_info
      implicit none
 
-     character(6) :: version = '7.8.1 '
-     character(9) :: lastmodified = 'Sept 2017'
+     character(6) :: version = '7.8.4 '
+     character(9) :: lastmodified = 'Apr  2018'
 
   end module program_info
 
@@ -948,7 +948,8 @@ module timing
   real(8) :: startbasis,endbasis
   real(8) :: startham,endham
   real(8) :: startlanczos,endlanczos
-  real(8) :: startobs,endobs
+  real(8) :: startobs,endobs,startwriteobs,endwriteobs
+  real(8) :: startdens,enddens
   real(8) :: starts1b,ends1b
   real(8) :: startp2b,endp2b
   real(8) :: startn2b,endn2b
@@ -958,7 +959,7 @@ module timing
   real(8) :: timereorthog
   
 ! Added by PGK ( extra timing ).............................................
-  real(8) :: time_applobs
+  real(8) :: time_applobs,time_writeobs
   real(8) :: time_reduce
   real(8) :: time_gather
   real(8) :: time_distr

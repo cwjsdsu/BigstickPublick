@@ -21,6 +21,43 @@
 !
 !=====================================================
 !
+!  MODIFIED IN 7.8.2
+!  
+!
+! CALLED BY:
+!   lanczos_output
+!   exactdiag_p
+!
+subroutine density1b_output
+	use densities
+	use nodeinfo
+	
+	call clocker('all','end')
+	call clockout('tmp')
+	call clocker('den','sta')
+	
+	if(usedensitybag)then
+		call density1b_compute
+		if(iproc==0)write(6,*)' One-body densities computed '
+		call clocker('all','end')
+		call clockout('tmp')
+		if(iproc==0)then
+		   write(6,*)' '
+		   write(6,*)' Writing densities to file '
+	    end if
+		call density1b_writeout
+		
+	else
+		call density1b_output_old
+		
+	end if
+	
+	return
+end subroutine density1b_output
+	
+
+!=====================================================
+!
 !  master subroutine for densities
 !
 ! CALLED BY:
@@ -37,7 +74,7 @@
 !    master_density1b_bundled
 !    coupled_densities
 
-subroutine density1b_output 
+subroutine density1b_output_old
   use system_parameters
   use sporbit
   use spstate
@@ -59,7 +96,6 @@ subroutine density1b_output
   use para_main_mod
   use jump_mod
   use lanczos_util
-  use densities
   implicit none
 !  include 'binterfaces.inc'
 
@@ -72,7 +108,6 @@ subroutine density1b_output
 
   integer :: ierr
   integer :: aerr
-  logical, parameter :: usesymmetry = .false.   ! signals to only do i->f for i >= f
 !--------------------- CONVERGENCE -----------------------------
 
   logical smallflag,zeroflag
@@ -350,8 +385,550 @@ subroutine density1b_output
   end if
   call clocker('obs','end')
 
-end subroutine density1b_output
+end subroutine density1b_output_old
 
+!=========================================================================
+!
+!  master subroutine for densities
+!  NEW VERSION 7.8.2:
+!     uses time-reversal symmetry and stores values in a derived type, 
+!
+! CALLED BY:
+!   lanczos_output
+!   exactdiag_p
+!
+! SUBROUTINES CALLED:
+!    set1bsectorjumps
+!    masterfindconjumps1b
+!    master1bodyjumps
+!    density_bundles_setup
+!    master_op_stat_den
+!    setMPIlimits4densities
+!    master_density1b_bundled
+!    coupled_densities
+
+subroutine density1b_compute
+  use system_parameters
+  use sporbit
+  use spstate
+  use localvectors
+  use nodeinfo
+  use io
+  use basis
+  use obs
+  use lanczos_info
+  use localvectors
+  use densities
+  use haiku_info
+  use precisions
+  use fragments
+  use mod_reorthog
+  use wfn_mod
+  use butil_mod
+  use bvectorlib_mod
+  use para_main_mod
+  use jump_mod
+  use lanczos_util
+  implicit none
+
+  real(4) :: xj,xt,ei,ef,xtt,xjj
+  integer(4) :: i,j,m,n
+  integer(4) :: jdummy
+  integer(4) :: ji,ti,jf,tf,jt,tt,jmin,jmax
+  integer(4) :: phase
+  integer(4) :: ja,jb
+  integer(kind=basis_prec) :: k
+  logical :: evenAJ,evenAT    ! needed to force "correct" J, T
+
+  integer :: ierr
+  integer :: aerr
+!--------------------- CONVERGENCE -----------------------------
+
+  logical smallflag,zeroflag
+  
+  real, allocatable :: denmat(:,:,:)
+  real :: nparticles
+  logical numberflag  ! flag to check on total number of particles; used for debugging
+  integer inode
+  character(1) :: vchar
+
+  numberflag = .true.
+  vchar = 'n'
+
+!........ DETERMINE IF EVEN OR ODD SYSTEM............
+
+  if( mod(np(1)+np(2),2) == 1 )then
+
+! if "spinless" then J is always integer (because it is really L)
+! however T can be half-integer (if "spinless" then this is really S)
+     if(spinless)then
+       evenAJ = .true.
+     else
+       evenAJ = .false.
+     end if
+     evenAT = .false.
+  else
+     evenAJ = .true.
+     evenAT = .true.
+  end if
+
+!...................
+
+  numorbmax=bmax(numorb(1),numorb(2) )
+
+     allocate( denmat( numorbmax, numorbmax, 0:1 ), stat=aerr )
+     if(aerr /= 0) then
+        call memerror("density1b_compute 1")
+        stop 5
+     end if
+     allocate( p1bopme(-nhspsmax:nhspsmax, -nhspsmax:nhspsmax), stat=aerr )
+     if(aerr /= 0) then
+        call memerror("density1b_compute 2")
+        stop 5
+     end if
+     allocate( n1bopme(-nhspsmax:nhspsmax, -nhspsmax:nhspsmax), stat=aerr )
+     if(aerr /= 0) then
+        call memerror("density1b_compute 3")
+        stop 5
+     end if
+	 allocate( densitybag(nkeep,nkeep), stat=aerr)
+     if(aerr /= 0) then
+        call memerror("density1b_compute 4")
+        stop 5
+     end if
+
+  if ( iproc == 0 ) then
+        print*,' '
+        print*,' Computing density matrices '
+        print*,' '
+  end if
+
+  if(np(1) > 0)then
+        call set1bsectorjumps(1, .false. , .false. , .false., .false. )
+        call set1bsectorjumps(1, .true.  , .false. , .false. , .false.)
+  endif
+  if(np(2) > 0)then
+        call set1bsectorjumps(2, .false. , .false. , .false., .false. )
+        call set1bsectorjumps(2, .true.  , .false. , .false., .false. )
+  endif
+
+  if(np(1) > 0)then
+!--------------- find conjugate jumps.......................................
+     call masterfindconjumps1b(1,.false.)
+     call master1bodyjumps(1,.false.)
+
+  endif
+
+  if(np(2) > 0)then
+
+!--------------- find conjugate jumps..............................
+        call masterfindconjumps1b(2,.false.)
+        call master1bodyjumps(2,.false.)
+
+  endif
+  
+  call master_para_distribute_onebody     
+  if(np(1) > 0)then
+     call master1bodyjumps(1,.true.)
+  endif
+
+  if(np(2) > 0)then
+        call master1bodyjumps(2,.true.)
+  endif
+!...................LOOP OVER WFNS..............................
+
+  if(.not.storelanczosincore1 .and. .not.storelanczosincoreMPI)then
+     call wfn_rewind(wfnfile)   
+     call read_wfn_header(wfnfile,.false.)
+     call wfn_read_nkeep(wfnfile, j)  ! dummy reading in nkeep
+  endif
+  vchar='n'
+  
+  do i = 1,nkeep
+
+     if(storelanczosincore1 .or. storelanczosincoreMPI)then
+        if(useNewReorthog) then
+           call br_retrieve_hist(i)
+           ! It turns out that we need the vector loaded into both vec1 and vec2
+           ! of course, they are different slices on each node
+           call br_restore_vec1()
+        else
+           vec1 = 0.0 ! in all ranks
+           call read_lanczos_vector_a(vchar,'i',i,lvec_file) ! only in rank=0
+           if(storelanczosincoreMPI) then
+            ! each mpi process reads one slice.  allreduce is overkill but works
+            call BMPI_ALLREDUCE(vec1, size(vec1), MPI_SUM, icomm, ierr) ! in place
+           end if
+        end if
+        ei = energy(i)
+        xj = xjlist(i)   ! fix
+        xtt= xtlist(i)   ! fix
+        ji = closest2J(evenAJ,xjlist(i))
+        if(isoflag)ti = closest2J(evenAT,xtlist(i))
+
+     else
+        do j = 1,i  ! temp
+           ! new interface, we say which vector to read and it checks
+           call wfn_readeigenvec(wfnfile, frag1, fcomm1, vec1, j, ei, xj, xtt)
+        end do  ! temp
+        call wfn_rewind(wfnfile)
+        call read_wfn_header(wfnfile,.false.)
+        call wfn_read_nkeep(wfnfile, j)    ! dummy reading in nkeep
+        ji = closest2J(evenAJ,xj)
+        if(isoflag)ti = closest2J(evenAT,-0.5 + sqrt(xtt+0.25))
+     end if
+
+     do j = 1,nkeep
+!		  if(usesymmetry .and. j > i)cycle                   ! only compute for f <= i
+		  if( j > i)cycle                   ! only compute for f <= i
+        if(storelanczosincore1 .or. storelanczosincoreMPI)then
+           if(useNewReorthog) then
+              call br_retrieve_hist(j)
+              call br_restore_vec2()
+           else
+              vec2 = 0.0
+              call read_lanczos_vector_a(vchar,'f',j,lvec_file)
+              if(storelanczosincoreMPI) then
+                 ! each mpi process reads one slice.  allreduce is overkill but works
+                 call BMPI_ALLREDUCE(vec2, size(vec2), MPI_SUM, icomm, ierr) ! in place
+              end if
+           end if
+
+           ef = energy(j)
+
+           jf = closest2J(evenAJ,xjlist(j)) !         
+           if(isoflag)then
+              tf = closest2J(evenAT,xtlist(j)) ! 
+           endif
+        else
+           ! new interface, we say which vec (j) to read and it checks
+           call wfn_readeigenvec(wfnfile, frag2, fcomm2, vec2, j, ef, xjj, xtt)
+           jf = closest2J(evenAJ,xjj) ! nint(2*xjj)          
+           if(isoflag)then
+              tf = closest2J(evenAT,-0.5 + sqrt(xtt+0.25)) ! nint(-1 + sqrt(4*xtt+1))
+           endif
+        end if 
+        jmax = (jf + ji)/2
+        jmin = abs( jf -ji)/2
+!.......... NOW SET UP DERIVED TYPE FOR STORING DENSITY MATRICES..		
+		densitybag(i,j)%jmin=jmin
+		densitybag(i,j)%jmax=jmax
+		densitybag(j,i)%jmin=jmin
+		densitybag(j,i)%jmax=jmax
+		
+		allocate(densitybag(i,j)%denmat(jmin:jmax,numorbmax,numorbmax,0:1), stat=aerr )
+        if(aerr /= 0) then
+            call memerror("density1b_compute 7")
+            stop 5
+        end if
+		densitybag(i,j)%denmat=0.0
+		allocate(densitybag(i,j)%zeroflag(jmin:jmax), stat=aerr )
+        if(aerr /= 0) then
+            call memerror("density1b_compute 7b")
+            stop 5
+        end if
+		
+		if(i/=j)then
+			allocate(densitybag(j,i)%denmat(jmin:jmax,numorbmax,numorbmax,0:1), stat=aerr )
+	        if(aerr /= 0) then
+	            call memerror("density1b_compute 8")
+	            stop 5
+	        end if
+			densitybag(j,i)%denmat=0.0
+			allocate(densitybag(j,i)%zeroflag(jmin:jmax), stat=aerr )
+	        if(aerr /= 0) then
+	            call memerror("density1b_compute 9")
+	            stop 5
+	        end if
+			
+		
+		end if
+!.................... FINISHED ALLOCATING MEMORY......................................		
+		
+		
+!        if ( iproc == 0 .and. isoflag) then
+!              write(resultfile,*)' '
+!              write(resultfile,333)i,ei,Ji,Ti 
+!              write(resultfile,334)j,ef,Jf,Tf
+!        end if
+!        if ( iproc == 0 .and. .not.isoflag) then
+!              write(resultfile,*)' '
+!              write(resultfile,433)i,ei,Ji
+!              write(resultfile,434)j,ef,Jf
+!        end if
+333     format(' Initial state #',i5,' E = ',f10.5,' 2xJ, 2xT = ',2i4) 
+334     format(' Final state   #',i5,' E = ',f10.5,' 2xJ, 2xT = ',2i4) 
+433     format(' Initial state #',i5,' E = ',f10.5,' 2xJ   = ',i4) 
+434     format(' Final state   #',i5,' E = ',f10.5,' 2xJ   = ',i4) 
+
+       denmat(:,:,:) = 0.0  
+       call master_density1b_bundled
+        do jt = jmin,jmax
+              call coupled_densities(Jt,Ji,Ti,Jf,Tf,Jz,npeff(1)-npeff(2),  & 
+                   zeroflag, numorbmax ,denmat)
+				   densitybag(i,j)%zeroflag(jt)=zeroflag
+				   densitybag(j,i)%zeroflag(jt)=zeroflag
+				   
+!--------------------- CHECK PARTICLE OCCUPATIONS------------------
+              if(iproc == 0)then
+
+              if(numberflag .and. i == j .and. Jt == 0 )then
+                 if(isoflag .and. .not.pndensities)then
+                    nparticles = 0.0
+                    do n = 1,numorbmax
+                       xjj = 0.5* orbqn(1,n)%j
+                       nparticles = nparticles + (denmat(n,n,0))*sqrt( 2*(2*xjj+1))
+                       
+                    end do  ! n
+                    nparticles = nparticles /sqrt( float(jf+1)*float(tf+1))
+!......... MODIFY FOR p-h CONJUGATION ....
+                     if( abs( nparticles -npeff(1) -npeff(2)) > 0.001 .and. iproc==0)then
+                         print*,nparticles,' particles total for state ',i
+						       write(logfile,*)nparticles,' particles for state ',i,' when expecting ',npeff(1)+npeff(2)
+                     end if
+                 else
+                    nparticles = 0.0
+                    do n = 1,numorb(1)
+                       xjj = 0.5* orbqn(1,n)%j
+                       nparticles = nparticles + (denmat(n,n,0))*sqrt( (2*xjj+1))
+                       
+                    end do  ! n
+                    nparticles = nparticles /sqrt( float(jf+1))
+                    if( abs( nparticles -npeff(1) ) > 0.001 .and. iproc==0)then
+                       print*,nparticles,' protons total '
+ 				    end if
+                    nparticles = 0.0
+                    do n = 1,numorb(2)
+                       xjj = 0.5* orbqn(2,n)%j
+                       nparticles = nparticles + (denmat(n,n,1))*sqrt( (2*xjj+1))
+                       
+                    end do  ! n
+                    nparticles = nparticles /sqrt( float(jf+1))
+                    if( abs( nparticles -npeff(2) ) > 0.001 .and. iproc==0)then
+                       print*,nparticles,' neutrons total '
+				    end if
+
+                 endif
+              endif
+
+!---------------------------------------------------------------
+
+              if(zeroflag)cycle
+!---------------------- WRITE OUT DENSITY MATRIX ELEMENTS
+              if(isoflag .and. .not.pndensities)then
+!                 write(resultfile,31)Jt
+31               format(' Jt = ',i3,', Tt = 0        1 ' )
+              else
+!                 write(resultfile,32)Jt
+32               format(' Jt = ',i3,', proton      neutron ')
+
+              endif
+              do m = 1,numorbmax
+                 do n = 1,numorbmax
+                    if ( (denmat(m,n,0) /=  0.0 .or. denmat(m,n,1) /=  0.0) & 
+                         .and. iproc == 0 )then
+						 densitybag(i,j)%denmat(jt,m,n,0)=denmat(m,n,0)
+						 densitybag(i,j)%denmat(jt,m,n,1)=denmat(m,n,1)
+!............. USE SYMMETRY.............................................
+                         if(i/=j)then
+							 ja = (orbqn(1,m)%j+1)/2
+							 jb = (orbqn(1,n)%j+1)/2
+							 
+							 phase=(-1)**((Ji-Jf)/2 +ja-jb)
+							 if(isoflag.and..not.pndensities) phase=phase*(-1)**((Ti-Tf)/2)
+							 densitybag(j,i)%denmat(jt,n,m,0)=phase* denmat(m,n,0)
+							 densitybag(j,i)%denmat(jt,n,m,1)=phase* denmat(m,n,1)
+							 
+						 end if						 
+						 
+!                       write(resultfile,36)m,n,(denmat(m,n,tt),tt=0,1)
+                    end if
+36                  format(2i5, 2f10.5)
+                 end do ! b
+              end do   ! a
+		  end if ! iproc == 0
+           end do ! jt
+
+        end do   !j
+!..... TEMPORARY
+     if(.not.storelanczosincore1 .and. .not.storelanczosincoreMPI)then
+        call wfn_rewind(wfnfile)     
+        call read_wfn_header(wfnfile,.false.)
+        call wfn_read_nkeep(wfnfile, j)  ! dummy reading in nkeep
+     end if
+!......END TEMPORARY
+  end do  ! i
+     
+  call clocker('den','end')
+
+end subroutine density1b_compute
+
+!=========================================================================
+!
+!  write out one-body densities at the end
+!  NEW VERSION 7.8.2:
+!     
+!
+! CALLED BY:
+!   lanczos_output
+!   exactdiag_p
+!
+
+subroutine density1b_writeout
+  use system_parameters
+  use sporbit
+  use spstate
+  use localvectors
+  use nodeinfo
+  use io
+  use basis
+  use obs
+  use lanczos_info
+  use localvectors
+  use densities
+  use haiku_info
+  use precisions
+  use fragments
+  use mod_reorthog
+  use wfn_mod
+  use butil_mod
+  use bvectorlib_mod
+  use para_main_mod
+  use jump_mod
+  use lanczos_util
+  implicit none
+
+  real(4) :: xj,xt,ei,ef,xtt,xjj
+  integer(4) :: i,j,m,n
+  integer(4) :: ji,ti,jf,tf,jt,tt,jmin,jmax
+  logical :: evenAJ,evenAT    ! needed to force "correct" J, T
+
+  integer :: ierr
+  integer :: aerr
+!--------------------- CONVERGENCE -----------------------------
+
+  logical smallflag,zeroflag
+  
+  real, allocatable :: denmat(:,:,:)
+  real :: nparticles
+  logical numberflag  ! flag to check on total number of particles; used for debugging
+  integer inode
+  character(1) :: vchar
+
+
+  if(iproc/=0)return
+  
+  call clocker('obw','sta')
+
+!........ DETERMINE IF EVEN OR ODD SYSTEM............
+
+  if( mod(np(1)+np(2),2) == 1 )then
+
+! if "spinless" then J is always integer (because it is really L)
+! however T can be half-integer (if "spinless" then this is really S)
+     if(spinless)then
+       evenAJ = .true.
+     else
+       evenAJ = .false.
+     end if
+     evenAT = .false.
+  else
+     evenAJ = .true.
+     evenAT = .true.
+  end if
+
+  
+  do i = 1,nkeep
+
+        ei = energy(i)
+        xj = xjlist(i)   ! fix
+        xtt= xtlist(i)   ! fix
+        ji = closest2J(evenAJ,xjlist(i))
+        if(isoflag)ti = closest2J(evenAT,xtlist(i))
+
+     do j = 1,nkeep
+
+           ef = energy(j)
+
+           jf = closest2J(evenAJ,xjlist(j)) !         
+           if(isoflag)then
+              tf = closest2J(evenAT,xtlist(j)) ! 
+           endif
+ 
+        jmax = (jf + ji)/2
+        jmin = abs( jf -ji)/2
+	
+		
+		
+        if (  isoflag) then
+              write(resultfile,*)' '
+              write(resultfile,333)i,ei,Ji,Ti 
+              write(resultfile,334)j,ef,Jf,Tf
+        end if
+        if ( .not.isoflag) then
+              write(resultfile,*)' '
+              write(resultfile,433)i,ei,Ji
+              write(resultfile,434)j,ef,Jf
+        end if
+333     format(' Initial state #',i5,' E = ',f10.5,' 2xJ, 2xT = ',2i4) 
+334     format(' Final state   #',i5,' E = ',f10.5,' 2xJ, 2xT = ',2i4) 
+433     format(' Initial state #',i5,' E = ',f10.5,' 2xJ   = ',i4) 
+434     format(' Final state   #',i5,' E = ',f10.5,' 2xJ   = ',i4) 
+
+
+!---------------------------------------------------------------
+
+!---------------------- WRITE OUT DENSITY MATRIX ELEMENTS
+             do jt = jmin,jmax
+                 if(densitybag(i,j)%zeroflag(jt))cycle
+
+              if(isoflag .and. .not.pndensities)then
+                 write(resultfile,31)Jt
+31               format(' Jt = ',i3,', Tt = 0        1 ' )
+              else
+                 write(resultfile,32)Jt
+32               format(' Jt = ',i3,', proton      neutron ')
+
+              endif
+              do m = 1,numorbmax
+                 do n = 1,numorbmax
+                    if ( densitybag(i,j)%denmat(jt,m,n,0) /=  0.0 .or. densitybag(i,j)%denmat(jt,m,n,1) /=  0.0)then
+					 
+						 
+                       write(resultfile,36)m,n,(densitybag(i,j)%denmat(jt,m,n,tt),tt=0,1)
+                    end if
+36                  format(2i5, 2f10.5)
+                 end do ! b
+              end do   ! a
+           end do ! jt
+
+        end do   !j
+
+  end do  ! i
+     
+  if(iproc == 0)then
+     write(resultfile,*)'+++++++++++++++++++++++++++++++++++++++++++++'
+     write(resultfile,*)' '
+     write(resultfile,*)' Definition of density matrices : '
+     write(resultfile,*)' rho_K(a^+b) =   (Jf || (a^+ b)_K || Ji) / sqrt(2K+1) '
+     write(resultfile,*)'  where reduced matrix element is convention of Edmonds '
+     write(resultfile,*)' (note: if isospin is good symmetry, then '
+     write(resultfile,*)'  doubly reduced/ divided by sqrt(2T+1) as well'
+     write(resultfile,*)' '
+     write(resultfile,*)' Note time-reversal symmetry relation: '
+     write(resultfile,*)' rho_K(a^+b, Ji->Jf) = (-1)^(ja-jb + Ji-Jf) rho_K(b^+a, Jf->Ji) '
+     write(resultfile,*)' For isospin, add in factor (-1)^(Ti-Tf)'
+     write(resultfile,*)' '
+     write(resultfile,*)'+++++++++++++++++++++++++++++++++++++++++++++'
+     write(resultfile,*)' '
+
+  end if
+  call clocker('obw','end')
+
+end subroutine density1b_writeout
+
+
+!
 !=========================================================================
 !
 ! subroutine DENSITY1B_FROM_OLDWFN
@@ -639,13 +1216,24 @@ end subroutine density1b_from_oldwfn
   use opbundles
   use bmpi_mod
   use haiku_info
+  use spstate,only:nhspsmax
   implicit none
   integer :: asps,ia,ath,it,asgn,bsps,ib,bth,bsgn,ierr
   real(kind=obs_prec) :: xme
   
+!........ ADDED IN 7.8.4 to reduce matrix element
+!         KLUGEY because I couldn't get reduce to work correctly
+!
+  real(kind=obs_prec), allocatable :: x1bopmevec(:),y1bopmevec(:)
+  integer :: sizex1bopmevec,ivec
+  
+  sizex1bopmevec = (2*nhspsmax+1)**2
+  if(.not.allocated(x1bopmevec))allocate(x1bopmevec(sizex1bopmevec))
+  if(.not.allocated(y1bopmevec))allocate(y1bopmevec(sizex1bopmevec))
 
   p1bopme(:,:) = 0.0
   n1bopme(:,:) = 0.0
+  
 
   call applyP1Bdenbundled_g(opbundlestart(iproc),opbundleend(iproc))
   call applyN1Bdenbundled_g(opbundlestart(iproc),opbundleend(iproc))
@@ -657,6 +1245,10 @@ end subroutine density1b_from_oldwfn
 !............... NOW REDUCE .........................  
 if(nproc > 1)then	
 	do it = 1,2
+		if(np(it)< 1)cycle
+	    x1bopmevec(:)=0.0
+		y1bopmevec(:)=0.0
+		
     do asps = 1, nhsps(it)+nhsps(-it)
        if(asps > nhsps(-it))then
            ia = asps - nhsps(-it)
@@ -678,18 +1270,34 @@ if(nproc > 1)then
              bth = -it
              bsgn = -1
           endif
-		  
-		  if(np(it)> 0)then
-			  if(it==1)call BMPI_ALLREDUCE(p1bopme(ia*asgn,ib*bsgn),xme,1,MPI_SUM,icomm,ierr)
-			  if(it==2)call BMPI_ALLREDUCE(n1bopme(ia*asgn,ib*bsgn),xme,1,MPI_SUM,icomm,ierr)
-              if(it==1)p1bopme(ia*asgn,ib*bsgn)=xme
-              if(it==2)n1bopme(ia*asgn,ib*bsgn)=xme
+			  
+			  ivec = (ia*asgn+nhspsmax)*(2*nhspsmax+1)+ib*bsgn+nhspsmax+1
+			  if(it==1)x1bopmevec(ivec)=p1bopme(ia*asgn,ib*bsgn)
+			  if(it==2)x1bopmevec(ivec)=n1bopme(ia*asgn,ib*bsgn)
 
-		  end if
 		  
 	  end do  ! bsps
 	  
   end do  ! asps
+
+    call BMPI_REDUCE_REAL8_VECIP(x1bopmevec, sizex1bopmevec, MPI_SUM,0, icomm, ierr) ! in place
+!
+! NOTE if obs_prec = 4 then must use the followin	
+	
+!    call BMPI_REDUCE_REAL4_VECIP(x1bopmevec, sizex1bopmevec, MPI_SUM,0, icomm, ierr) ! in place
+		!end if
+	if(iproc==0)then
+	do ia = -nhspsmax,nhspsmax
+		
+		do ib = -nhspsmax,nhspsmax
+		  ivec = (ia+nhspsmax)*(2*nhspsmax+1)+ib+nhspsmax+1
+		  if(it==1)  p1bopme(ia,ib)=x1bopmevec(ivec)
+		  if(it==2)  n1bopme(ia,ib)=x1bopmevec(ivec)
+
+			
+		end do 
+	end do
+   end if
 end do   ! it
 end if
   
@@ -849,6 +1457,8 @@ end subroutine onebodysetup
 !
 !  CALLED BY main routine 
 !
+!  MODIFIED in 7.8.4 to read in 'xpn' format for .opme files
+!
 
   subroutine readin1bodyop
   use opmatrixelements
@@ -862,15 +1472,16 @@ end subroutine onebodysetup
   character*15 :: appfile
   character*40 :: title
   integer ilastap
-  integer i,i1
+  integer i,i1,i2
   integer a,b
   real xj
   real :: xxx,yyy
+  logical :: xpnformat,nvals,pvals    ! ADDED in 7.8.4 to allow reading in xpn format opme
+  integer :: neutron_offset ! ADDED in 7.8.4 to allow reading in xpn format opme
  
 !-------------- DUMMIES FOR CONSISTENCY CHECK --------------
   integer n,l,j
-  integer :: aerr,ierr
-  
+  integer :: aerr,ierr  
 
 !---------------- ALLOCATED ARRAY FOR COUPLED OPERATOR MATRIX ELEMENTS
 
@@ -897,18 +1508,22 @@ if(iproc == 0)then
    read(23,'(a)')title
    print*,title
    
+   xpnformat= .false.
    select case (title(1:3))
       case ('iso')
 	  pnoperators = .false.
   
 	  case ('pns')
 	  pnoperators = .true.
+	  xpnformat = .false.
 	  
 	  case ('xpn')
-	  print*,' Currently BIGSTICK does not accept .opme files in xpn format '
-	  print*,' Instead for proton-neutron breaking it must be in pns format, with two columns '
-	  print*,' See section 4.6.2 in the BIGSTICK Manual/Overview '
-	  stop
+	  pnoperators = .true.
+	  xpnformat = .true.
+!	  print*,' Currently BIGSTICK does not accept .opme files in xpn format '
+!	  print*,' Instead for proton-neutron breaking it must be in pns format, with two columns '
+!	  print*,' See section 4.6.2 in the BIGSTICK Manual/Overview '
+!	  stop
 	
       case default
 	  print*,'  Something wrong with first line of .opme file '
@@ -951,6 +1566,28 @@ if(iproc==0)then
      stop
    endif
 
+   if(xpnformat)then
+	   neutron_offset=numorb(1)
+	   do i = 1, numorb(1)
+	     read(23,*)i1,i2,n,l,xj
+	     if(i1 /= i)then
+	         print*,' ooopsie ',i1,i
+	         stop
+	     endif
+	     if(i2 /= i+neutron_offset)then
+	         print*,' ooopsie ',i2,i+neutron_offset
+	         stop
+	     endif		 
+	     j = nint(2*xj)
+	     if( n/= orbqn(1,i)%nr .or. l /= orbqn(1,i)%l .or. j /= orbqn(1,i)%j)then
+	        print*,i,' Mismatch in orbits ',n,l,j
+	        print*, orbqn(1,i)%nr, orbqn(1,i)%l, orbqn(1,i)%j
+	        stop
+	     endif
+
+	   enddo	   
+	   
+   else
    do i = 1, numorb(1)
      read(23,*)i1,n,l,xj
      if(i1 /= i)then
@@ -965,6 +1602,8 @@ if(iproc==0)then
      endif
 
    enddo
+   end if
+   
 !---------- READ IN J,T for operator----------------------
   if(.not.pnoperators)then
     read(23,*)jop,top      ! J and T of operator
@@ -984,13 +1623,43 @@ if(iproc==0)then
   end if
 
 !------------ READ IN REDUCED MATRIX ELEMENTS ----------------
-  do i = 1, 1000
-	  if(pnoperators)then
+  do i = 1, 10000
+	  if(pnoperators .and. .not. xpnformat)then
 		  read(23,*,end=348)a,b,xxx,yyy
 	  else
         read(23,*,end =348)a,b,xxx
 	  end if
+	  if(xpnformat)then
+		  if(a <= neutron_offset .and. b<= neutron_offset)then
+			  nvals = .false.
+			  pvals = .true.
+			  yyy = 0.
+ 
+		  end if
+		  
+		  if((a > neutron_offset .and. b<= neutron_offset) .or. & 
+		      (a<=neutron_offset .and. b > neutron_offset))then
+			  print*,' A charge-changing matrix elements, skipped ',a,b
+			  cycle
+	  
+		  end if
+		  if(a > neutron_offset .and. b> neutron_offset)then
+			  nvals = .true.
+			  pvals = .false.
+			  a = a -neutron_offset
+			  b = b -neutron_offset	  
+			  yyy = xxx
+			  xxx = 0.0
+		  end if
+
+		  
+	  else
+		  nvals = .true.
+		  pvals = .true.
+		  
+	  end if
 !------------- ERROR TRAP---------------------
+
     if( orbqn(1,a)%j+orbqn(1,b)%j < 2*jop .or. abs( orbqn(1,a)%j-orbqn(1,b)%j) > 2*jop) then
        if(iproc == 0)then
          write(6,*)' Mismatch in angular momentum of operator '
@@ -1000,9 +1669,13 @@ if(iproc==0)then
        endif
        stop
     endif
+	
+	!end if
+
+
 	if(pnoperators)then
-		if(np(1)>0)pop1bod(a,b)=xxx
-		if(np(2)>0)nop1bod(a,b)=yyy
+		if(np(1)>0 .and. pvals )pop1bod(a,b)=xxx
+		if(np(2)>0 .and. nvals)nop1bod(a,b)=yyy
 	else
         op1bod(a,b) = xxx
     end if
@@ -1011,7 +1684,7 @@ if(iproc==0)then
 348      continue
 
   close(unit=23)
-end if
+end if   ! iproc == 0
 !--------------- NOW BROADCAST -------------------------------
 !    a bit of a kludge
 call BMPI_BCAST(jop,1,0,icomm,ierr)
@@ -1363,11 +2036,9 @@ end do
            ! Do reduce only onto root node.  We will be sending this data to 
            ! the slices from the isfragroot nodes (rank=0 in fcomm1, fcomm2, hcomm),
            ! so other nodes don't need it.
-!		   print*,iproc,' before ',vec2(28)
            call BMPI_REDUCE(vec2, size(vec2), MPI_SUM, 0,fcomm2, ierr) ! in place
 		   call br_grab_vec2()
 !           if(nproc > 1)call BMPI_ALLREDUCE(vec2, size(vec2), MPI_SUM, fcomm2, ierr) ! in place
-!		   print*,iproc,' after ',vec2(28)
 		   
     else
         if(nproc > 1 )then

@@ -12,16 +12,6 @@ module sp_potter
 	
 contains
 	
-	subroutine readin_sppot
-		implicit none
-
-
-!.......... CHECK CONGRUENCE OF SINGLE-PARTICLE ORBITS.....
-		
-		
-		return
-	end subroutine readin_sppot
-	
 !......... CHECK IF SUBSUME...NEEDED TO SET UP BUNDLES....
 !
 !  CALLED BY: main routine
@@ -63,10 +53,10 @@ contains
 		integer :: phasecd,phaseab
 		
 		if(call_spe)return
-
+		
 		Afactor = 1.0/float(np(1)+np(2)-1)
-		nsppot = 0.0
-		psppot = 0.0
+!		nsppot = 0.0
+!		psppot = 0.0
 		if(npeff(2) > 0)then
 			do a = 1,numorb(2)
 				nsppot(a,a)=nsppot(a,a)+nspe(a)
@@ -122,7 +112,7 @@ contains
 							   phasecd = (-1)**(( jc-jd)+jj)
 						       vvv=nsppot(a,c)*kron_delta(b,d)+ nsppot(a,d)*kron_delta(b,c)*phasecd & 
 							+   nsppot(b,c)*kron_delta(a,d)*phaseab + nsppot(b,d)*kron_delta(a,c)
-						       vvv = Afactor/zeta(a,b)/zeta(b,c)*vvv
+						       vvv = Afactor/zeta(a,b)/zeta(d,c)*vvv
 							   nnme(indx)%v(jj)= nnme(indx)%v(jj)+ vvv
 						    end do   		! JJ
 						end do ! d			
@@ -192,7 +182,10 @@ contains
 						       vvv=psppot(a,c)*kron_delta(b,d)+ psppot(a,d)*kron_delta(b,c)*phasecd & 
 							+   psppot(b,c)*kron_delta(a,d)*phaseab + psppot(b,d)*kron_delta(a,c)
 							   if(vvv==0.00)cycle
-						       vvv = Afactor/zeta(a,b)/zeta(b,c)*vvv
+						       vvv = Afactor/zeta(a,b)/zeta(d,c)*vvv
+						!	   print*,psppot(a,c)*kron_delta(b,d), psppot(a,d)*kron_delta(b,c)*phasecd & 
+						!	,  psppot(b,c)*kron_delta(a,d)*phaseab , psppot(b,d)*kron_delta(a,c)
+						!	   print*,a,b,c,d,vvv
 							   ppme(indx)%v(jj)= ppme(indx)%v(jj)+ vvv
 						    end do   		! JJ
 						end do ! d			
@@ -211,7 +204,7 @@ contains
 						do d = 1,dfinish
 					
 						   pair1 = numorb(2)*(a-1) + b  						   
-						   pair2 = numorb(2)*(c-1) + b 
+						   pair2 = numorb(2)*(c-1) + d
 						   pair1 = PNcouplemap(pair1)
 						   pair2 = PNcouplemap(pair2)
 						   if(pair1==-1 .or. pair2==-1)cycle
@@ -228,6 +221,7 @@ contains
 						   indx = (pair1-iref)*(pair1-1-iref)/2+pair2-iref+istart  
 						   vvv = psppot(a,c)*kron_delta(b,d)+nsppot(b,d)*kron_delta(a,c)
 						   vvv = Afactor*vvv!/zeta(a,b)/zeta(c,d)
+!						   if(vvv/=0.0)print*,a,b,c,d,pair1,pair2
 						
 						   jjmin = pnme(indx)%jmin
 						   jjmax = pnme(indx)%jmax						

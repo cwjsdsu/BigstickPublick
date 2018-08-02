@@ -8,6 +8,27 @@ module densities
   real(kind=obs_prec), allocatable,target   :: p1bopme(:,:), n1bopme(:,:)
   logical :: pndensities    ! flag to denote printing out densities in proton-neutron formalism
                             ! added March 2017 to 7.7.5 
+							
+!.... ADDED in 7.8.2 to make using time-reversal easier, also writing out
+
+
+
+ type densitypack
+	 integer :: Jmin,Jmax
+	 logical,allocatable :: zeroflag(:)
+
+	 real(kind=obs_prec),allocatable :: denmat(:,:,:,:) ! denmat(J,a,b,T)
+	 
+ end type densitypack
+ 
+ logical :: usedensitybag = .true.     ! IF TRUE then use new density master routines
+ 										! automatically uses symmetry and writes out
+ logical, parameter :: usesymmetry = .false.   ! signals to only do i->f for i >= f FOR OLD ROUTINE
+ logical :: writeunformatted1bden = .false.   ! if TRUE then write out as unformatted TO BE ADDED
+  
+ type (densitypack), allocatable,target :: densitybag(:,:)   ! densitybag(istate,fstate)
+ 
+ 							
    contains
 !
 ! Master routine for coupling density matrices

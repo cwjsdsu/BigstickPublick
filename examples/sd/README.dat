@@ -1,24 +1,38 @@
-Sample files for testing BIGSTICK and its modalities
+Sample files for testing BIGSTICK and its modalities.
+These cases are in in the sd shell and use the Brown-Richter USDB interaction.
+Sample outputs for comparison are found in the folder output.
 
 a normal run + density matrices 
 
 bigstick.x < input.mg25ref
-
-a normal run + density matrices but with 2-body implemented as 3-body
-
-bigstick.x < input.mg25ref3b
+compare to output/mg25ref.res
 
 compute density matrices from the previous run
 
 bigstick.x < input.mg25denfromwfn
+compare to output/mg25dx.dres, output/mg25dx_dres.m  (Mathematica-compatible output)
 
 compute an expectation value (of the original Hamiltonian) from a reference wfn
 
 bigstick.x < input.mg25expectH
+compare to output/mg25expectH.res
 
 compute an alternate wavefunction and take the overlap
 
 bigstick.x < input.mg25alt
+compare to output/mg25alt.res  (also contains density matrices)
 bigstick.x < input.mg25overlap
+compare to output/overlap.dat
+
+apply the spin operator (in sdspin.opme) to wave functions; needs mg25ref.wfn from running
+input.mg25ref
+
+bigstick.x < input.mg25apply1b
+
+get a strength function distribution (will need to apply Clebsch-Gordans to get full B-values)
+(Needs results from running input.mg25apply1b)
+
+bigstick.x < input.mg25strength
+compare to output/mg25spinstrength1.res
 
 

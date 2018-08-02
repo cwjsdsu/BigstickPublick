@@ -135,6 +135,7 @@ subroutine applyobsbundled(ivec)
   do iprocs = procstart,procstop
 
   do ibundle = opbundlestart(iprocs), opbundleend(iprocs)
+!	  if(opbundle(ibundle)%annexed)cycle
 
   select case ( opbundle(ibundle)%optype )
 

@@ -1,4 +1,4 @@
-!====================================================================
+!===================================================================2
 !  LANCZOS routines for BIGSTICK
 !
 !  versions for 'new' parallelization scheme -- FALL 2011
@@ -1522,8 +1522,14 @@ subroutine Wcounter
         call BMPI_ALLREDUCE(wfrac(:), SIZE(wfrac), MPI_SUM, icomm, ierr) ! in place reduce
      end if
      if(iproc==0)then
-        write(6,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=1,nWvals)
-        if(writeout)write(resultfile,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=1,nWvals)
+        write(6,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=1,min(nWvals,10))
+        if(writeout)write(resultfile,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=1,min(10,nWvals))
+		if(nWvals> 10)then
+	        write(6,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=11,nWvals)
+	        if(writeout)write(resultfile,'(i4,4x,10f7.2)')istate,(Wfrac(wlist(n))*100.,n=11,nWvals)
+			
+			
+		end if
      end if
   end do  ! istate
 
