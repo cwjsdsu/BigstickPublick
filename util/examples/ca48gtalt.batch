@@ -1,0 +1,104 @@
+echo ' '
+echo ' Calculation of beta- decay of Ca48 '
+echo ' '
+
+echo ' Computing GT matrix element file '
+
+tropic1b.x << input
+fp0    ! input .sps file     
+5      ! option for GT
+1.27   ! value gA
+fpgt   ! output name
+input
+
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' compute spectrum of parent '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+
+
+
+bigstick.x << input
+n      ! only get spectrum
+ca48alt  ! output name
+fp0     ! 
+0 8    ! Z, N
+0      ! Mz
+gx1a     ! 
+1. 42. 48. 0.3
+end  
+ld
+5 100
+input
+
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' print spectrum of daughter states '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+
+
+
+bigstick.x << input
+n      ! get daughter spectrum
+sc48alt   ! file name
+fp0     
+1 7
+0
+gx1a
+1. 42. 48. 0.3
+end
+ld
+10 200
+input
+
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' get density matrices '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+
+
+
+bigstick.x << input
+d    ! get density matrices in iso-format
+sc48tshift0.75alt  ! name of output
+fp0
+1 7
+0
+gx1a
+1 42. 48. 0.3
+fpt2        ! add in T^2 in fp shell
+-0.75 -0.75 0 0     ! strength -0.75 on both 1-body and 2-body
+end
+ld
+10 300
+input
+
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' Compute B(GT) from density matrices '
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * * * * '
+
+
+
+gtstrength.x << input
+fpgt     ! name of .opme file
+1        ! no quenching or additional scaling
+ca48alt     ! parent file
+1        ! just 1st state (g.s.)
+sc48alt     ! daughter file
+9        ! 9 daughters
+sc48tshift0.75alt    ! name of density file
+0.75     ! shift back up by 0.75 T(T+1)
+n        ! no more density files
+ca48gtminusalt   ! output name
+0 8      ! Z, N of parent
+1 7      ! Z, N of daughter
+input
+
+echo ' * * * * * * * * * * * * * * * * * * * '
+echo ' B(GT) found in ca48gtminusalt.str '
+echo ' '

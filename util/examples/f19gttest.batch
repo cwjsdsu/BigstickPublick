@@ -1,0 +1,94 @@
+#
+#  This batch file tests the Ikeda sum rule in the A=19 system
+#  
+#  first create GT matrix elements
+#  note: you don't have to do this every time. Can create and save.
+#
+
+echo 'running tropic1b to get transition matrix elements '
+echo ' case for A=19 Gamow-Teller transitions in sd shell '
+
+tropic1b.x << input
+sd           ! name of .sps file
+5            ! menu option to generate GT
+1.0           ! value of gA
+sdgt0        ! name of output file -- will be sdgt0.opme
+input
+
+echo ' '
+echo ' Gamow-Teller matrix elements created with gA = 1 '
+
+#  
+# run BIGSTICK to get density matrix elements
+#
+
+echo 'running BIGSTICK for spectra '
+
+bigstick.x << input 
+dp       ! create densities in proton-neutron format
+f19      
+sd 
+1 2
+1          !jz
+usdb          
+1 18. 19. 0.3    !scaling
+end        ! end of reading in Hamiltonian files
+ex     ! 'exact' or full diagonalization by Householder rather than Lanczos
+128     ! 128 states kept
+input
+
+
+bigstick.x << input
+n
+o19
+sd
+0 3
+1
+usdb
+1 18. 19. 0.3
+end
+ex
+37
+input
+
+echo ' '
+echo ' BIGSTICK finished '
+echo ' '
+echo ' Now to run gtstrength to get total strength '
+
+gtstrength.x << input
+sdgt0
+1.0        ! no scaling
+f19       ! name of file with input parent states
+128        ! # of parent states to use
+o19       ! name of file with output daughter states
+37         ! # of daughter states to use
+f19      ! first .res file with densities
+0.0         ! shift in T(T+1)
+n        ! read in another .res file for more densities?
+f19betaplus     ! name of output .str file
+1 2        ! initial valence Z, N
+0 3        ! final valence Z,N
+input
+
+gtstrength.x << input
+sdgt0
+1.0
+f19
+128
+f19     ! this stands in for ne19
+128
+f19
+0.0
+n
+f19betaminus
+1 2
+2 1
+input
+
+
+echo ' '
+echo ' All done! output written to f19betaminus.str and f19betaplus.str '
+echo ' '
+
+

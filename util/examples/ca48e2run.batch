@@ -1,0 +1,60 @@
+echo ' '
+echo ' Sample script to compute B(E2) for Ca48 using GX1A interaction '
+echo ' '
+echo ' running tropic1b to generate E2 operator '
+echo ' '
+tropic1b.x << input
+fp0    ! BIGSTICK-format .sps file needed for code
+2      ! menu option 2: E2
+2      ! proton-neutron
+y      ! include cross-shell (irrelevant here)
+1.91   ! value of osc length = (A)^1/6 fm
+1.5  0.5   ! effective charge for proton, neutron
+fpe2pn  ! output file name
+n      ! in single-column xpn format? n = double column pns format
+input
+
+echo ' '
+echo ' * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * '
+echo ' creating density matrices '
+echo ' * * * * * * * * * * * * * * * *'
+echo ' * * * * * * * * * * * * * * * * '
+
+
+bigstick.x << INPUT
+dp     ! menu choice -- proton neutron densities 
+ca48                                                   
+fp    !  name of .sp file  (in this case, NuShell format) 
+           0           8  ! # of valence protons, neutrons 
+           0        ! 2 x Jz of systems 
+upn     ! signal to read NuShell-format unnormalized interaction
+gx1apn
+end
+ld    ! Lanczos menu option 
+          5         150      ! # states to keep, max # iterations
+INPUT
+
+echo ' * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * '
+echo 'finished with run '
+echo ' * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * * * * * * * * * '
+echo ' * * * * * * * * '
+
+genstrength.x << input
+fpe2pn        ! name of .opme 
+1             ! no additional scaling
+ca48          ! name of reference parent state file
+3             ! # of parent states
+ca48          !name of reference daughter state file
+3             ! # of daughter states
+ca48          ! name of density file
+n             ! do not read in additional density files
+ca48e2        ! name of output
+input
+
+echo ' '
+echo ' B(E2)s written to ca48e2.str '
+echo ' '

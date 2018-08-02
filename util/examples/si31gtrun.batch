@@ -1,0 +1,97 @@
+#
+#  This batch file runs Al28 and computes GT transitions
+#  
+#  first create GT matrix elements
+#  note: you don't have to do this every time. Can create and save.
+#
+
+echo 'running tropic1b to get transition matrix elements '
+echo ' case for Si31 Gamow-Teller transitions in sd shell '
+
+tropic1b.x << input
+sd           ! name of .sps file
+5            ! menu option to generate M1
+1.27        ! value of gA
+sdgt        ! name of output file -- will be sdM1.opme
+n           ! write out in proton-neutron two column format (pns)
+input
+
+echo ' '
+echo ' Gamow-Teller matrix elements created '
+
+#  
+# run BIGSTICK to get density matrix elements
+#
+
+echo 'running BIGSTICK for spectra '
+
+bigstick.x << input 
+n       ! create densities in proton-neutron format
+si31
+sd 
+6 9
+1          !jz
+usdb          
+1 18. 31. 0.3    !scaling
+end        ! end of reading in Hamiltonian files
+ld         ! default Lanczos
+5 100      ! 5 states kept, 100 iterations max
+input
+
+bigstick.x << input
+n   
+p31
+sd
+7 8 
+1 
+usdb
+1 18. 31. 0.3
+end
+ld
+5 100
+input
+
+
+echo ' running BIGSTICK for density matrices '
+
+bigstick.x << input
+d
+p31tshift2
+sd
+7 8
+1
+usdb
+1 18. 31. 0.3
+sdt2
+-2. -2. 0 0
+end
+ld
+10 200
+input
+
+echo ' '
+echo ' BIGSTICK finished '
+echo ' '
+echo ' Now to run gtstrength to get total strength '
+
+gtstrength.x << input
+sdgt
+1.0        ! no scaling
+si31       ! name of file with input parent states
+5          ! # of parent states to use
+p31       ! name of file with output daughter states
+2         ! # of daughter states to use
+p31tshift2 !  .res file with densities, shifted down
+2.         ! shift in T(T+1)
+n        ! read in another .res file for more densities?
+si31betaminus     ! name of output .str file
+6 9        ! initial valence Z, N
+7 8        ! final valence Z,N
+input
+
+echo ' '
+echo ' All done! output written to si31betaminus.str '
+echo ' this was the case of Gamow-Teller transitions from Si31 -> P31 in sd shell '
+echo ' '
+
+

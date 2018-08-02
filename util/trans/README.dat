@@ -1,0 +1,15 @@
+these are various utilities for one-body transitions
+see utilities manual
+
+
+** code to generate one-body matrix elements *
+make tropic1b.x
+** code to read in densities and get EM B-values **
+make genstrength.x
+** code to read in densities and get Gamow-Teller B-values **
+make gtstrength.x
+
+** code to change .opme files from iso format to explicit pn (xpn) **
+gfortran -o cvtop2pn.x cvtisophone2pn.f90 libra.f
+
+

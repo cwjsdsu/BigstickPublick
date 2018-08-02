@@ -1,0 +1,63 @@
+#
+#  This batch file runs Al27 and computes M1 transitions
+#  
+#  first create M1 matrix elements
+#  note: you don't have to do this every time. Can create and save.
+#
+
+echo 'running tropic1b to get transition matrix elements '
+echo ' case for Al27 M1 transitions in sd shell '
+
+tropic1b.x << input
+sd           ! name of .sps file
+7            ! menu option to generate M1
+2            ! explicit proton-neutron
+sdM1         ! name of output file -- will be sdM1.opme
+n           ! write out in proton-neutron two column format (pns)
+input
+
+echo ' '
+echo ' transition matrix elements created '
+
+#  
+# run BIGSTICK to get Al27 density matrix elements
+#
+
+echo 'running BIGSTICK for one-body densities'
+
+bigstick.x << input 
+dp        ! create densities in proton-neutron format
+al27      
+sd 
+5 6
+1          !jz
+usdb          
+1 18. 27. 0.3    !scaling
+end        ! end of reading in Hamiltonian files
+ld         ! default Lanczos
+5 100      ! 5 states kept, 100 iterations max
+input
+
+echo ' '
+echo ' BIGSTICK finished '
+echo ' '
+echo ' Now to run genstrength to get total strength '
+
+genstrength.x << input
+sdM1
+1.0        ! no scaling
+al27       ! name of file with input parent states
+5          ! # of parent states to use
+al27       ! name of file with output daughter states
+5          ! # of daughter states to use
+al27       ! first .res file with densities
+n          ! read in another .res file for more densities?
+al27m1     ! name of output .str file
+input
+
+echo ' '
+echo ' All done! output written to al27m1.str '
+echo ' this was the case of M1 transitions in Al27 in sd shell '
+echo ' '
+
+

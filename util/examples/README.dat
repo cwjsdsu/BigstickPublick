@@ -1,0 +1,41 @@
+This directory contains the following data files:
+
+sd.sps    ! definition of the single particle space
+usdb.int  ! Brown and Richter USDB interaction file in sd space
+sdt2.int  ! matrix elements of isospin T^2 in sd space
+
+fp.sp     ! NuShell-format single particle space
+fp0.sps   ! Bigstick-format single-particle space
+gx1apn.int ! NuShell-format ('upn') proton-neutron version of GXPF1A interaction
+gx1a.int  ! standard isospin-conserving format
+fpt2.int  ! matrix elements of isospin T^2 in fp space
+
+
+and the following batch scripts to run. Make sure that 
+bigstick.x
+tropic1b.x
+genstrength.x
+
+are all in your path. I assume the bash shell.
+
+EXAMPLE: M1 transitions in Al27
+bash al27m1run.batch
+
+EXAMPLE: Gamow-Teller transitions Al28->Si28
+bash al28gtrun.batch
+
+EXAMPLE: Test of Ikeda sum rule in A=19 system, sums of F19->Ne19 and F19->O19
+bash f19gttest.batch
+
+EXAMPLE: Gamow-Teller for Si31 -> P31, using shift in isospin
+bash si31gtrun.batch
+
+EXAMPLE: E2 transitions for Ca48 in fp shell with nushell files and auto-scaling
+bash ca48e2run.batch
+
+EXAMPLE: Gamow-Teller for Ca48 -> Sc48, using shift in isospin, in pf shell
+(uses NuShell p-n formatted interaction)
+bash ca48gtrun.batch
+
+EXAMPLE: Gamow-Teller Ca48-> Sc48, with explicit isospin-conserving force
+bash ca48gtalt.batch

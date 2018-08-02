@@ -1,0 +1,2 @@
+rm *.bigstick fort.* *.wfn *.opme *.res *.lcoef *.log
+rm *.str ham.dat
