@@ -1,5 +1,29 @@
 WHAT'S NEW IN BIGSTICK IN VERSION...
-7.8.1 (Aug-Nov 2017)
+
+7.8.4 (Apr 2018-June 2018)
+(* Deprecated 'annexations')
+* Rewrote MPI portion of one-body density matrices to try to speed up.
+* Minor correction to basis output, option 'b'
+* Minor correction to reading in interaction files, make clear success in reading files
+* Modified output 'timingdata.bigstick' to contain more information
+* Fixed bug in subsuming single-particle off-diagonal potential into two-body (in pn-TBMEs)
+* Added 'xpn' format for .opme one-body transition operator input
+* Fixed bug in NuShell-style autoscaling for pn.
+* Fixed bug in reading in NuShell 'upn' format for pn (specifically for (ap,bn|V|bp,an) matrix elements)
+
+7.8.3 (Feb-Mar 2018)
+* Introduced 'annexation' of opbundles for W-truncations to improve OpenMP performance
+(* However, they did not speed up, so deprecated in next version)
+
+7.8.2 (Jan-Feb  2018)
+* Added capability to check header for formattype: !DEF, !XPN, !UPN, !MFD etc
+* Installing ability to read off-diagonal one-body potentials (beyond single particle energies)
+* Modifed computation of 1-body densities; instead of doing all, just do
+i <= f, and then using symmetries to finish the rest. Saved to a derived 
+type and then written to file all at once.
+
+
+7.8.1 (Aug-Dec 2017)
 * Deleted restart option from menu.
 * Commented out code to open .lvec files
 * Added capability to read NuShell .sp files
@@ -7,6 +31,7 @@ WHAT'S NEW IN BIGSTICK IN VERSION...
 * Improved timing estimate.
 * Fixed more bugs which arose in subsuming SPE.
 * Fixed bug of reading in xpn files with truncations
+* Full manual plus official release (Jan 2018)
 
 7.8.0 (Aug 2017)
 * Subsumed SPE operations into PP, NN, PN via (N-1)/(A-1); new file bsppot.f90
@@ -146,3 +171,134 @@ files, and so on.
 * Deleted file bparallellib5.f90 with only obsolete files
 * Deleted file bpreconditioner.f90 
 * Added dlamc3.f to improve optimization cf KSM notes
+
+
+OLDER HISTORY
+
+
+!    History (for more, see BIGSTICK_HISTORY.txt)
+!
+!  VERSION 2.0: Setting up for basis -- CWJ @ SDSU -- June/July 2008
+!  VERSION 3.0: BASIS DONE, hops include-- CWJ  @ SDSU -- OCT 2008
+!  VERSION 4.0: jumps done                 CWJ @ SDSU  -- DEC 2008
+!  VERSION 5.0   : 1-body jumps fixed in no-truncation case
+!...........................................................................  
+!  6.0   : Includes MPI codes from W. E. Ormand and P. G. Krastev    -- June 9, 2009
+!  6.4.17: successful 3-body version                                  -- Aug 2011 (CWJ)
+!  6.5.0 : Set runtime options for splitting Lanczos vector           -- February 2011 (PGK)
+!  6.6.0:  merged code                                                -- August 2011 (CWJ)
+!  6.6.6:  new "opbundles" for organizing application of Hamiltonian -- Sept 2011 (CWJ)
+!  6.6.7: fixed strength functions; added WEO's OpenMP; Oct 2011 (CWJ)
+!  6.6.9: improved usage of geneologies, chains Oct 2011 CWJ
+!  6.7.6:  opbundles fixed for use with 3-body
+!  6.7.7: OpenMP works with 3-body
+!  6.8.0: Rebooting MPI
+!  6.8.1: Single-precision Lanczos vectors; added "preconditioning"
+!  6.8.2: Fixed small bug in strength functions for "full" diagonalization
+!  6.8.3: Added "time-reversal" for pn matrix elements, saving some memory
+!                              (but taking more time)
+!  6.8.5: MPI counting of jump
+!  6.8.7: MPI distribution of operations and mock serial runs
+!  6.8.10: Improved instrumentation of timing;
+!          Added bapplyhlib3.f90: runs an operation all at once
+!  without leaving a subroutine;
+!          Corrected error in estimating # of NNN operations
+!  6.9.0:  Added weighting by timing
+!  
+!  7.0.0:  MPI Mark 1 runs correctly, including calculation of J^2, T^2 (Sept 2012, CWJ)
+!  7.0.2:  Reads in J-coupled 3-body matrix elements
+!  7.0.3:  restricts creation of jumps to MPI compute nodes where needed (Nov 2012, CWJ)
+!  7.0.4:  storage of Lanczos across MPI compute nodes (Jan 2013, WEO)
+!  7.0.6:  internal storage of Lanczos vectors option even for single-processor (Mar 2013, CWJ)
+!  7.0.7:  RELEASE VERSION -- tested, although still problems in MPI
+!  7.0.8:  option to write lanczos vectors to disk even when storing internally; 
+!          coupled to restart option (Mar 2013, CWJ)
+!	   added OpenMP to expectation values ('x'), density matrices ('d') (Apr 2013/CWJ)
+!  7.0.9:  added double precision for eigenvalues (egv_prec in module precisions)
+!          capability to read in uncoupled/deformed TBMEs
+!  7.0.10: bugs in restart fixed
+!  7.1.0 : problem with precision in MPI orthogonalization in bparallellib4.f90 fixed
+!  7.1.1 : added switching order of loops in applyh if no OpenMP threading
+!  7.1.2/3 : made vector "reading"/"writing"/"orthogonalization" more uniform across
+!            parallelizations
+!          fixed bug in MPI when sorting jumps--only sort once
+!  7.1.4 : thick-restart now works when storing lanczos vectors in RAM (including MPI)
+!          OpenMP for uncoupling PP/NN/PN matrix elements  (July 2013/CWJ)
+!  7.1.5 : improved handling of eigenvectors for compute J^2, T^2, TRDENS output
+!          now store eigenvectors internally (if lanczos vectors stored)
+!  7.1.6 : switch order of loops in applyh extended to 3-body
+!  7.1.7 : turned off OpenMP for computing traces
+!  7.1.8 : "improved" menu for Lanczos
+!  7.1.9 : improved efficiency in MPI calculation of jumps; fixed occasional bug in computing jump distribution
+!  7.2.0-2: moving towards cap on storing jumps on a node
+!  7.2.3 : draft routines to cap storage of jumps on nodes (need further testing)
+!  7.2.4 : turned calculation of T back on even when breaking isospin
+!  7.2.5 : fixed bug for density matrices in exact diagonalization; 
+!          started towards p-h conjugation
+!          put all interfaces into 'binterfaces.inc'
+!          started towards direct storage of XX/XXX matrix elements
+!          computing % of wfns in W-truncation subspaces
+!  7.2.6 : p-h conjugation works now especially for just one species changed
+!  7.2.8 : allowed for different W-truncation for proton, neutron spaces (Feb 2014)
+!        : corrections to deformed option
+!  7.2.10: calculate break-up of Lanczos vectors
+!  7.2.11: RELEASE VERSION April 23 2014
+!  7.2.12: Simpler (non-optimized) breakup of Lanczos vectors into fragments; distributing work bewtween fragments
+!  7.2.13: Fixed an MPI bug in write_wfn_header; improved timing of jump creation and decoupling of matrix elements
+!          fixed some initialization errors
+!  7.2.14: More work on breaking up lanczos vectors into fragments; detailed notes on distribution 
+!          (header of bparallel_lib1.f90)
+!          Started work on alternative storage of PN, PPN, PNN uncoupled matrix elements NEEDS TO BE REVISED
+!          Adding timing of "descendents" mostly to see where jump creation time is going.
+!  7.2.15: Continued work on breaking up lanczos vectors; working draft of distribution routines
+!  
+!  7.3.0 : MPI distribution over fragments
+!  7.3.1 : reorthgonalization routines over fragments (KSM)
+!  7.3.3 : Fixing some input routines for isospin breaking (WEO)
+!          Added environment variables for input files directories BIG_SPS_DIR and BIG_INT_DIR (WEO)
+!  7.3.4 : Fixed some run-time information on distributing jumps
+!  7.3.5 : improved reorthgonalization (KSM)
+!  7.3.6 : started toward improved distribution of PN etc matrix elements (CWJ); 
+!          can now write fragmented vectors to disk (KSM)
+!          reinstalled particle-occupation option
+!  7.3.7:  improved inline calculation of single-particle occupations
+!  7.3.8:  wrote and debugged opbundles for one-body densities
+!  7.3.9:  merged with updates from KSM, improved handling of MPI
+!  7.4.0:  more experiments with improved PN storage, introduced "introns" to study discontinuous storage of jumps
+!  7.4.1:  merged with updates from KSM, improved handling of particle occupations, MPI
+!       :  routines towards improved fragments
+!  7.4.2: Major upgrade of MPI wrappers (KSM) with more robust handling of data types/passing data
+!         Minor bugs in MPI calls fixed (KSM)
+!         More work on better distribution of jumps and deleting zeroes in jump arrays (via "introns" in bintron.f90)
+!         Started work on end-of-run report (module reporter/subroutine report)
+!         Fixed in part "overlap" option
+!  7.4.3  Overlap, apply scalar operator, and apply 1-body operator work in serial mode (at least)
+!  7.4.4  Fixing errors in running with 3-body forces; revisions to postprocessing options to provide uniformity
+!  7.4.5  Eliminated "subsectors"
+!  7.4.6  Returned to improved fragmentation based upon haiku blocks (in progress);
+!         fixed bugs in apply one-body nonscalar operators, overlap
+!  7.4.9  Improved fragmentation debugged; fixed a bug where we fail to assign processes between fragments
+!  7.5.0  Small fixes; moved towards OpenMP parallelism in counting jumps
+!  7.5.1  Progress on more compact jump storage (a.k.a. "intron deletion")
+!  7.5.2  Revising matrix element storage and decoupling to make it easier to port to other codes
+!  7.5.3  Improved storage of jumps (intron deletion) implemented in 1- and 2-body jumps
+!  7.5.4  Improved storage of jumps (intron deletion) implemented in 3-body jumps
+!  7.5.5  Removed "HF" and preconditioner; see older versions (7.5.4) if you want to reintroduce
+!         Fixed problem (at least in serial) reading .wfn files and computing density matrices
+!  7.5.6  Fixed density matrices to run in particle-hole conjugation 
+!  7.5.7  Fixed minor issues in processing answers with "exact" (Householder) diagonalization
+!  7.5.8 (skipped over; development of grouples for advanced storage)
+!  7.5.9  Changed # of uncouple matrix elements (nmatXX, nmatpn, etc) to integer(8)
+!  7.6.0  Added log file, timing of intron routines, minor fixes to p-h conjugation with truncation
+!  7.6.3  Rewrote lanczos routine so pivot is introduced outside it; added options to "improve" pivot
+!         by applying selected parts of the Hamiltonian
+!  7.6.5  Improved OpenMP caching KSM
+!  7.6.6  Fixed bugs in OpenMP caching on old compilers, compiles now on Vulcan
+!         Reading in prior wavefunctions works for fragments for options 'x', 's'
+!  7.6.7  Reorganized routines for 1-body densities and application; made latter
+!         conform to opbundle structures 
+!  7.6.8  Apply one-body should now work in MPI, with fragments 
+!  7.6.9  Continued reorganization / inclusion of subroutines into modules, esp. basis routines
+!  7.7.0  Inline 1-body densities work with MPI and fragments
+!         more reorganization of routines into modules, esp. parallel distribution routines
+!  7.7.1  1-body density matrices from old wavefunctions works in MPI now, incl. fragments
