@@ -58,10 +58,30 @@ ${PROGENSTRENGTH}.x : $(GEN_STRENGTH_OBJECTS)
 ${PROGTSTRENGTH}.x : $(GT_STRENGTH_OBJECTS)
 	$(F90COMPILER) -o ${PROGTSTRENGTH}.x $(GT_STRENGTH_OBJECTS) $(LFLAGS)
 
+cvtisop2pn.x: cvtisop2pn.o libra.o
+	$(F90COMPILER) -o cvtisop2pn.x cvtisop2pn.o libra.o
+
 %.o : %.f90
 	$(F90COMPILER) $(F90CFLAGS) $(<F)  
 
 %.o : %.f
 	$(F77COMPILER) $(F77CFLAGS) $(<F)  
 clean : 
-	rm *.o *.mod *.x 
+	rm -f *.o *.mod *.x 
+
+help :
+	@echo
+	@echo Choose one of these options: 
+	@echo
+	@echo make tropic1b.x 
+	@echo  -- matrix elements for one-body transition operators 
+	@echo
+	@echo make genstrength.x 
+	@echo  -- transitions strengths for EM operators 
+	@echo
+	@echo make gtstrength.x 
+	@echo  -- computes Gamow-Teller strengths 
+	@echo
+	@echo make cvtiso2pn.x 
+	@echo  --- isospin formalism files to proton-neutron 
+	@echo

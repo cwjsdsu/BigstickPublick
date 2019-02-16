@@ -19,6 +19,7 @@ integer       :: jtrans,ttrans
 real          :: cgiso  ! isospin CG
 integer       :: icc   ! denotes whether charge-changing or charge conserving 
 real   :: tj  ! compile with libra.f
+character :: ychar
 
 
 print*,' '
@@ -156,6 +157,14 @@ end if
 if(icc /= 1)then
 !  print out pn
 !cgiso = 1.0/sqrt(3.)
+
+if(icc/=3)then
+	print*,' Do you want p->n (e.g., beta+ emission)? Enter y/n'
+	read(5,'(a)')ychar
+	if(ychar/='y' .and. ychar/='Y')goto 3333
+	print*,' Including p->n / beta+ transitions '
+end if
+	
 cgiso = tj(0.5,float(ttrans),0.5, -0.5,1.0, -0.5)
 
 do a = 1,numorb
@@ -164,9 +173,18 @@ do a = 1,numorb
 	end do
 end do
 
+3333 continue
 
 ! print out np
 !cgiso = -1.0/sqrt(3.)
+
+if(icc/=3)then
+	print*,' Do you want n->p (e.g., beta- emission)? Enter y/n'
+	read(5,'(a)')ychar
+	if(ychar/='y' .and. ychar/='Y')goto 3334
+	print*,' Including n->p / beta- transitions '
+end if
+
 cgiso = -tj(0.5,float(ttrans),0.5, 0.5,-1.0, 0.5)
 do a = 1,numorb
 	do b = 1,numorb
@@ -174,6 +192,7 @@ do a = 1,numorb
 	end do
 end do
 
+3334 continue
 end if
 111 format(2i4,f10.5) 
 	 
