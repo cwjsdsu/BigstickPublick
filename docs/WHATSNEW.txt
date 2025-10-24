@@ -1,4 +1,227 @@
-WHAT'S NEW IN BIGSTICK IN VERSION...
+WHAT'S NEW IN BIGSTICK VERSION...
+7.11.4 (July2025 - )
+* Added option 'ru' to read in multiple files (no orthonormalization)
+* Fixed a bug in reading 'upn' format with parity 0 (both)
+* Cleaning up manual
+
+7.11.3 (Apr 2025 -  Jun 2025  )
+* Added option 'ro' to read in multiple files and orthonormalize
+* Added option 'jp' to project out states of good J.
+* Fixed bug in option 'tw' (order of basis in .wfn and .trwfn not the same)
+* Better eigensolvers disabled for thick-restart
+
+7.11.2 (Sept 2024 - Mar 2025 )
+* Added option 'pv' to compute overlap of Lanczos vectors with wfn file
+* Fixed truncation option so that -1 or W > Wmax -> Wmax
+* Fixed minor bug in iterations (for Green functions)
+* Use better eigensolvers to speed up large spaces (DSYEVR, DSTEGR); 
+    later fixed induced bug for thick-restart
+* Added OpenMP to construction of eigenvectors for speedup
+* Fixed a bug in computing parity of vectors
+* Fixed bug when fragment size > int*4 and requires int*8
+
+7.11.1 (Jul 2024 - Aug 2024 )
+* Added option 'h' to compute Hamiltonian-like matrix elements between states 
+* Fixed bug in 2->3 body conversion.
+* Fixed minor bug in .trwfn output of option 't'
+
+7.11.0 (May 2024 - Jun 2024  )
+* Stable (?) release
+
+7.10.9 (Nov 2023 - Apr 2024 )
+* Reorganized folder structure.
+* Added Oliver Gorton's routines to write 1-body densities as binary files (options db,dxb)
+* Fixed minor bugs in computing occupations, 1-body densities from prior files
+* Fixed bug with 'sterile' orbits but read in isospin format--AVOID DOING IN FUTURE
+* MAJOR EDITS -- updated MPI to fortran 2008, 'use mpi_08', using preprocess -cpp
+
+7.10.8 (July 2023 - August 2023)
+* Now prints out parity as additional column
+* Added options 'do','dxo', to compute 1-body densities only for odd-J
+* Now automatically writes out orbital occupation information to .occres files when running 1-body densities
+* Fixed (?) a bug in densities, occupations when have a filled shell and using p-h conjugation
+* Fixed subtle bug in particle-hole conjugation when breaking isospin (interaction or space)
+* Fixed wrong scaling in Coulomb option for MFDn format
+
+7.10.7 (April 2023 - June 2023)
+* Modified 'skipping' diagonalization so less frequent for large # of iterations
+* Added extra decimal place in outputting one-body density matrices
+* Can now use W < 0 (internally shifts to all non-negative)
+* Added option 'tx' to read a .wfn and output .trwfn (not tested in MPI)
+* Added option 'tw' to read .trwfn and output .wfn (not yet tested in MPI)
+* NOTE: options 'sb', 'sbs' may not be working correctly
+* Minor fix to option 'd' when using 'ex' solver: output orbitals after energies
+
+7.10.6 (June 2022 - March 2023)
+* Return to addressing two-body densities (unfinished).
+* Fixed minor bug in counting up pn uncoupled matrix elements (when large)
+* Fixed densities so orbits always written to .dres file, not just in dx, dxp
+* Added Lanczos menu options/info to log file
+* Modified read in of block pivot so can just specify start, stop
+* Addition option 'gc' which allows for resolvent with complex energy
+
+7.10.5 (June 2022)
+* Merge corrections
+* Added 'm0' option to compute only dimensions
+* Added 'du' option to compute uncoupled densities, and 'ou/oun' to apply uncoupled operators
+
+7.10.4 (Nov 2021 - June 2022 )
+* Fixed (correctly) problem in timing, somewhat kludgey for useHZSomp = .true.
+* Added 'cx' option to compute configuration occupations from prior wavefunction
+* Added useHZSomp functionality with block Lanczos -RMZ
+* Added thick-restart into main block Lanczos routine -RMZ
+
+7.10.3 (Oct 2021)
+* Attempt to fix bug in two-body density matrices under truncations. Kludgey fix appears
+to produce other complications; will try different approach (but preserving this fix 
+for the record).
+
+7.10.2 (July 2021 - Oct 2021 )
+* Use of TR in storing PP/NN uncoupled matrix elements
+* Fixed bug in not initializing flag formattedfile in binput_tbme.f90
+
+7.10.1 (July 2021 )
+* Jump counting and jump generation now include OpenMP parallelism.
+* (Tried to) fix problems in timing
+
+7.9.12 (Mar 2021 - June 2021 )
+* Fixed bug in two-body densities (large dimensions) from using single precision, now double
+* Introduced new menu options, 'ss' and 'sbs' which do not compute J,T nor write wfn to file
+* Improved distro algorithm for large cases with 'greedy' opbundles
+* Fixed problem in writing/reading 'magic number'in large .wfn files so they can be read back
+* Changed default fragment size to 500M
+* Turned off 'split_sectorjump,' which caused problems for large cases (instead of solving them) 
+
+7.9.11 (Feb 2021 - Mar 2021)
+* timinginfo.bigstick now has output in time per thread
+* fixed / reverted PNb loops, slower but more reliable
+* (However turned off sorting for NN for now)
+* Added 'pnw' option to .sps files which allows for different p,n weightings in two columns 
+* Made choosing pivot vectors default in option 'np' for reading in vectors
+* If reading in a pivot block, can make some vectors random 
+
+7.9.10 (Jan 2021)
+* Modified output timingdata.bigstick to include 'origin' opbundle
+* Reintroduced sorting of PP, NN jumps; reordered loops for PP, and PN b; faster now
+* BUT A BUG later fixed in 7.9.11 (but PN b is back to slower)
+* Completed a working version of option 'g' for a resolvent, convergence still potential issue
+* Resolvent (Green's function) works in MPI
+* Generalized option 'g' to 'gv' to allow to take dot product immediately after computing resolvent.
+
+7.9.9 (Oct 2020 - Dec 2020 )
+* Added size warning for block Lanczos on MPI
+* Fixed (again?) error in MPI for one-body densities when using p-h conjugation
+* Made writing density matrices to .dres file now default... will have to update other codes
+* .dres files have s.p. orbit information
+* Removed option 'f' for self-consistent mean-field; doesn't help (a truncation is a better pivot)
+* Fixed (I think) problem with densities when applying p-h conjugation to a filled shell
+
+7.9.8 (Sept 2020 )
+* Modified strength function option 'su' so that normalization is carried forward, that is
+  vectors written to file under option 'su' are not normalized; 
+  option 's' or 'sn' does output normalized wave functions; see Manual
+* Added option 'dxp' to generate 1-body densities in proton-neutron format, from old wfn
+* Modified 'dx', 'dxp' options to allow for selecting a range of initial, final states.
+* Also modified 'dx', 'dxp' options to write out selected spectra for use in post-processing codes
+* Modified read-in of single-particle energies so no longer have to be 10 to a line
+* Fixed bug in output of block strength function (option 'sb')
+
+7.9.7 (Aug 2020 - Sept 2020 )
+* Added option for 3-body centroids 
+* disabled OpenMP in bdenslib3.f90 routines applyP1Bden and applyN1bden
+   This fixes an occasional bug in MPI-OMP calculations of densities in some cases
+
+(intermediate versions of 7.9.6: prototyping use of greedy opbundles,
+but cascade of bugs have postponed this project)
+
+7.9.6 (May 2020 - June 2020 )
+* Fixed bug in MPI distribution of jumps for density one-body jumps
+* Changed entry of fragmentsize so that it is in millions
+* Extended auto input for some variables in modeling.
+* Added jumpstart option 'j' to initial menu -> more efficient MPI
+
+7.9.5 (Mar 2020 - May 2020 )
+* Fixed bug in .trdens in MPI 
+* Improved error trap when in reading interaction to catch wrong # of matrix elements
+* Set FULLTRIGGER (in module flagger) as threshhold to invoke converting a filled space to empty 
+  via particle-hole truncation
+* Fixed bug in computing 1body densities when using p-h conjugation. Appears to have fixed
+  computing densities from prior wavefunction. BUT may not have fixed 'apply one body' in 
+  p-h conjugation.
+* Improved distribution of opbundles for one-body densities; added OpenMP to one-body densities
+* Augmented timing of one-body densities;  added output 'den1btime.bigstick'  
+* Added 'diagonal' option ('2d') for two-body densities; these are just for initial=final, and Jt=0
+* Added 'diagonal' option ('2i') for two-body densities with good isospin
+* Check sum rule on two-body densities. NOTE: 2-body densities does not work in MPI.
+* Extended autoscaling so that if coefficients A,A0,X are zero, then no scaling
+
+7.9.4 (Nov 2019 - Feb 2020)
+* Successfully added storage of PP, NN using time-reversal
+* Fixed block Lanczos so when reading in pivot block, nkeep can be < dimblock
+* Added random restart for small beta
+* Introduce block strength option (sb) to apply strength function to blocks
+
+7.9.3 (Oct - Nov 2019)
+* Introduced PPNb, PNNb times for better (?) distribution of work
+* Introduced 'greedy' opbundles to aid in problematic MPI distributions
+* Revised output of memory requirements for better reading
+* Added 'random_mscheme' flag in module interaction -- for specialized use (normally = F)
+  (randomizes the uncoupled two-body matrix elements; do not use)
+
+7.9.2 (Sept - Oct 2019)
+* Two-body densities from existing .wfn file initially validated
+* Reintroduced three-body forces (option 3)
+* Fixed bug in 3-body block Lanczos routines.
+* Fixed bug in resetting opstats, distro in 3-body forces to compute J, T
+* Commented out buggy OpenMP lines in configuration occupation routine
+* Improved reporting of memory requirements/usage
+* Added option to model with 3-body interactions (option m3)
+
+7.9.1 (Feb - Sept 2019)
+* Added option for fully random pivots (set pivotoption=5 in initialize_lanczos_vector
+                                        in blanczoslib.f90 )
+* Added Lanczos option 'li' to just get Lanczos coefficients without eigensolutions
+* Added option 'ba' to write out .bas file as ASCII
+* Two-body densities from existing .wfn file (option '2') (unfinished)
+* Added configuration occupation (option 'co') 
+* Improved fragmentation code for more uniform size of fragments
+
+7.9.0 (Jan - Feb 2019)
+* Cleaned up clutter in output to screen.
+* Improved MPI distributions, primarily by splitting 'sector jumps' so that 
+  opbundles with a huge number can be avoided. This will enable larger calculations.
+* Fixed bug in MPI distribution when only one proton or only one neutron.
+* Added clocker statements to measure reduction after Hmult.
+* Changed Lanczos alpha, beta arrays to double precision for high level density cases.
+* Rewrote trace code so that one can turn off computing the variance.
+* Basic trace works in MPI now.
+
+7.8.9 (Nov - Dec 2018)
+* Rewrote block routines to handle fragments; had to add block_reg 
+  + data for GATHERV/SCATTERV 
+* Block Lanczos appears to be working correctly.
+* FIXED CRUCIAL BUG IN ONE-BODY DENSITIES with W-truncation. 
+
+7.8.8 (Nov 2018 )
+* Created separate subroutines for vector, block Lanczos
+* Created separate subroutine for convergence testing
+* Added default convergence for block Lanczos. Could be tuned further.
+* Added user-defined convergence for block Lanczos. 
+* Got block Lanczos to work with MPI. Further testing needed.
+* Added menu option for Green's function; not yet fully implemented
+
+7.8.7 (Nov 2018  )
+* Further merging of block Lanczos to regain full capabilities
+* Adding pivot option--when carrying out W truncations, only fill lowest W.
+(While it initially speeds convergence, final convergence is similar.)
+
+7.8.6 (Nov 2018 )
+* Merged block Lanczos (from R. Zbikowski)
+
+7.8.5 (Jul 2018-Nov 2018)
+* Towards block Lanczos (with R. Zbikowski)
+* Added a menu option ('wh') to write Hamiltonian to text file ham.dat
+* Added a menu option ('wo') to write one-body transition operator to file trans1b.dat
 
 7.8.4 (Apr 2018-June 2018)
 (* Deprecated 'annexations')
@@ -23,7 +246,7 @@ i <= f, and then using symmetries to finish the rest. Saved to a derived
 type and then written to file all at once.
 
 
-7.8.1 (Aug-Dec 2017)
+7.8.1 (Aug-Dec 2017)  * * * OFFICIAL RELEASE * * * 
 * Deleted restart option from menu.
 * Commented out code to open .lvec files
 * Added capability to read NuShell .sp files
