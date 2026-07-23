@@ -1689,7 +1689,9 @@ subroutine lanczos_p
 ! V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V 
      flyeig = (iter ==(iter/itskipeig)*itskipeig)
      if ( iproc==0 .and. .not. coef_only .and.  & 
-	      (( iter > nkeep .and. flyeig .and. checkeig) .or.      & 
+!	      (( iter > nkeep .and. flyeig .and. checkeig) .or.      & 
+! changed in version 8.0.0  May 2026 to fix bug for alternate convergence test
+	      (( iter > max(ncheck,nkeep) .and. flyeig .and. checkeig) .or.      & 
           (iter >= ncheck .and. .not.fixed_iter .and. .not. skipeig .and. checkeig)  .or. & 
 		     ( thick_restart .and. .not. finished .and. iter+1 == niter )).and..not.greenflag)then
 

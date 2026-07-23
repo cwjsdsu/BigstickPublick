@@ -635,7 +635,7 @@ else
 !$omp          shared(p1b_isd,p1b_fsd,p1b_phase,p1b_cop,p1b_dop)    &
 !$omp          shared(ibundle,opbundle)    &
 !$omp          shared(n1b_isd,n1b_fsd,n1b_phase,n1b_cop,n1b_dop)    &
-!$omp          shared(cpnpair,dpnpair,vecin,vecout),reduction(+:dmatpnhc)
+!$omp          shared(cpnpair,dpnpair,vecin,vecout),reduction(+:dmatpn)
   do mythread = 0, numnthreads-1
 
      startn_thread = opbundle(ibundle)%startn_thread(mythread)     !  starting position for proton 1-body jumps for this thread

@@ -548,6 +548,8 @@ end do
   minNh(it) = np(it) - maxNh(it) 
   minNh(-it) = np(it) - maxNh(-it) 
   
+!  print*,it,minNh(it),minNh(-it),' nh limits '
+  
   return
 end subroutine nhlimits
 

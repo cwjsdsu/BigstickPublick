@@ -1087,7 +1087,7 @@ end subroutine setup_PNarrays
 								if(x2bden(indx)%v(Jab,Jcd,Jtot) < -900)cycle
 								test = test + abs(x2bden(indx)%v(Jab,Jcd,Jtot))
 							end do
-							if(test < 1.0e-5)then
+							if(test < 1.0e-9)then
 								cycle					
 							endif
 							if(diag_den2b)then

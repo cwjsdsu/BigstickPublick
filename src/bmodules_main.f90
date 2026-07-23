@@ -80,8 +80,8 @@ end module menu_choices
   module program_info
      implicit none
 
-     character(6) :: version = '7.11.4'
-     character(9) :: lastmodified = 'Aug 2025'
+     character(6) :: version = '8.0.0'
+     character(9) :: lastmodified = 'May 2026'
 
   end module program_info
 
