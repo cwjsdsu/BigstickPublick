@@ -1,0 +1,5 @@
+make/ contains the make file; 'make help' for options
+src/ contains source files
+doc/ contains manual and other useful information
+bin/ is where the executable will be found; note if you make with a different option, you should 'make clean' in between
+
